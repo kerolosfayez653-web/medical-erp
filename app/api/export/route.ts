@@ -65,7 +65,8 @@ export async function GET(request: Request) {
 
       fileName = 'جرد_المستودع.xlsx';
       sheetName = 'المخزن';
-      data = products.map(p => {
+      // Fix: Use Promise.all with async map to correctly handle database queries during build
+      data = await Promise.all(products.map(async (p) => {
         const pPurchased = (await prisma.invoiceItem.aggregate({
           where: { productId: p.id, invoice: { type: 'PURCHASES' } },
           _sum: { quantity: true }
@@ -81,7 +82,7 @@ export async function GET(request: Request) {
           'متوسط التكلفة (WAC)': wac,
           'إجمالي القيمة': totalQty * wac
         };
-      });
+      }));
       // Optimization: Promise.all for mapping if needed, but for export it's okay.
     }
     else if (type === 'invoices') {
