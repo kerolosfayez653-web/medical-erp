@@ -328,6 +328,9 @@ export default function SalesPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px", maxHeight: "500px", overflowY: "auto" }}>
               {filteredProducts.map(p => {
                 const inCart  = cart.find(i => i.productId === p.id);
+                return (
+                  <div
+                    key={p.id}
                     onClick={() => addToCart(p)}
                     style={{
                       padding: "14px", background: inCart ? "rgba(16,185,129,0.15)" : "rgba(0,0,0,0.2)",
