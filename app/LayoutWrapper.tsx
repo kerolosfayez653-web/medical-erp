@@ -45,21 +45,6 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
       />
 
       <main>
-        {/* EMERGENCY SYNC INDICATOR - v1.1.3 */}
-        <div style={{ 
-          background: '#ef4444', 
-          color: 'white', 
-          textAlign: 'center', 
-          padding: '8px', 
-          fontSize: '14px', 
-          fontWeight: 'bold',
-          zIndex: 9999,
-          position: 'relative',
-          boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
-        }}>
-          ⚠️ [تم تحديث السيستم بنجاح - الإصدار v1.1.3] - إذا كنت ترى هذا الشريط فالسيستم محدث
-        </div>
-
         <header className="glass-header">
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <button 
@@ -104,36 +89,6 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
           {theme === "dark" ? "☀️" : "🌙"}
         </button>
       </main>
-
-      <style jsx>{`
-        .fixed-theme-toggle {
-          position: fixed;
-          bottom: 24px;
-          left: 24px;
-          width: 56px;
-          height: 56px;
-          border-radius: 50%;
-          background: var(--accent-color);
-          color: white;
-          border: none;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          font-size: 1.5rem;
-          cursor: pointer;
-          box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-          z-index: 999;
-          transition: var(--transition);
-        }
-        .fixed-theme-toggle:hover {
-          transform: scale(1.1) rotate(15deg);
-          box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-        }
-        @media (min-width: 1025px) {
-          .glass-header button { display: none !important; }
-          .desktop-only { display: block !important; }
-        }
-      `}</style>
     </div>
   );
 }

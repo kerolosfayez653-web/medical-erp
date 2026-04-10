@@ -66,7 +66,8 @@ export default function SalesPage() {
         name: product.name, 
         price: defaultPrice, 
         quantity: 1, 
-        maxQty: product.currentQty,
+        // Force high maxQty for out-of-stock items to allow sales flexibility
+        maxQty: product.currentQty > 0 ? product.currentQty : 999999,
         unitType: 'PRIMARY',
         unit: product.unit,
         secondaryUnit: product.secondaryUnit,
@@ -332,14 +333,7 @@ export default function SalesPage() {
                   <div
                     key={p.id}
                     onClick={() => addToCart(p)}
-                    style={{
-                      padding: "14px", background: inCart ? "rgba(16,185,129,0.15)" : "rgba(0,0,0,0.2)",
-                      borderRadius: "8px", cursor: "pointer",
-                      border: inCart ? "1px solid var(--accent-color)" : "1px solid rgba(255,255,255,0.05)",
-                      opacity: 1, transition: "var(--transition)",
-                    }}
-                    onMouseOver={e => { e.currentTarget.style.borderColor = "var(--accent-color)"; }}
-                    onMouseOut={e => { if (!inCart) e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; }}
+                    className={`product-card ${inCart ? 'in-cart' : ''}`}
                   >
                     <strong style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", lineHeight: "1.3" }}>{p.name}</strong>
                     <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: "4px" }}>
@@ -353,7 +347,15 @@ export default function SalesPage() {
                     <div style={{ fontSize: "0.78rem", color: p.currentQty > 0 ? "var(--success-color)" : "var(--danger-color)", fontWeight: "bold" }}>
                       رصيد: {p.currentQty}
                     </div>
-                    {inCart && <div style={{ fontSize: "0.72rem", color: "var(--accent-color)", marginTop: "4px" }}>✓ في الفاتورة ({inCart.quantity})</div>}
+                    
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                       {inCart ? (
+                         <span style={{ fontSize: "0.72rem", color: "var(--accent-color)" }}>✓ ({inCart.quantity})</span>
+                       ) : (
+                         <span style={{ fontSize: "0.72rem", opacity: 0.6 }}>🛒 أضف للبيع</span>
+                       )}
+                       <span style={{ fontSize: '1rem', color: 'var(--accent-color)' }}>＋</span>
+                    </div>
                   </div>
                 );
               })}

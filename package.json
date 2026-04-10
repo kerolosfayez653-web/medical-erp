@@ -1,7 +1,7 @@
 {
-  "description": "Medical ERP System - Production Build v1.1.2 - EMERGENCY FIX",
+  "description": "Medical ERP System - Production Build v1.1.4 - FINAL QUALITY",
   "name": "medical_erp",
-  "version": "0.1.2",
+  "version": "0.1.4",
   "private": true,
   "scripts": {
     "dev": "next dev",
