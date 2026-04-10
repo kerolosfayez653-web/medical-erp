@@ -78,13 +78,44 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
         <div className="main-content">
           {children}
         </div>
+
+        {/* Fixed Floating Theme Toggle */}
+        <button 
+          onClick={toggleTheme}
+          className="fixed-theme-toggle no-print"
+          title={theme === "dark" ? "الوضع الفاتح" : "الوضع الليلي"}
+        >
+          {theme === "dark" ? "☀️" : "🌙"}
+        </button>
       </main>
 
       <style jsx>{`
+        .fixed-theme-toggle {
+          position: fixed;
+          bottom: 24px;
+          left: 24px;
+          width: 56px;
+          height: 56px;
+          border-radius: 50%;
+          background: var(--accent-color);
+          color: white;
+          border: none;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.5rem;
+          cursor: pointer;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+          z-index: 999;
+          transition: var(--transition);
+        }
+        .fixed-theme-toggle:hover {
+          transform: scale(1.1) rotate(15deg);
+          box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
         @media (min-width: 1025px) {
-          button { display: none !important; }
+          .glass-header button { display: none !important; }
           .desktop-only { display: block !important; }
-          .theme-toggle-btn { display: flex !important; }
         }
       `}</style>
     </div>

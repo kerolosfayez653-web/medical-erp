@@ -13,7 +13,11 @@ export default function PrintInvoicePage() {
       fetch(`/api/invoices/${id}`)
         .then(r => r.json())
         .then(res => {
-          if (res.success) setInvoice(res.data);
+          if (res.success) {
+            setInvoice(res.data);
+            // Set document title for professional PDF filename: [Invoice Number]-[Customer Name]
+            document.title = `${res.data.invoiceNumber || 'INV'}-${res.data.person?.name || 'فاتورة'}`;
+          }
         })
         .finally(() => setLoading(false));
     }

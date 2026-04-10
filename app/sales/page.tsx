@@ -56,7 +56,6 @@ export default function SalesPage() {
   const selectedCustomer = customers.find(c => String(c.id) === selectedCustomerId) || null;
 
   const addToCart = (product: Product) => {
-    if (product.currentQty <= 0) return;
     const existing = cart.find(i => i.productId === product.id);
     const defaultPrice = product.avgSellPrice || (product.lots[0]?.sellingPrice || 0);
     if (existing) {
@@ -329,18 +328,14 @@ export default function SalesPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px", maxHeight: "500px", overflowY: "auto" }}>
               {filteredProducts.map(p => {
                 const inCart  = cart.find(i => i.productId === p.id);
-                const outOfStock = p.currentQty <= 0;
-                return (
-                  <div
-                    key={p.id}
-                    onClick={() => !outOfStock && addToCart(p)}
+                    onClick={() => addToCart(p)}
                     style={{
                       padding: "14px", background: inCart ? "rgba(16,185,129,0.15)" : "rgba(0,0,0,0.2)",
-                      borderRadius: "8px", cursor: outOfStock ? "not-allowed" : "pointer",
+                      borderRadius: "8px", cursor: "pointer",
                       border: inCart ? "1px solid var(--accent-color)" : "1px solid rgba(255,255,255,0.05)",
-                      opacity: outOfStock ? 0.4 : 1, transition: "var(--transition)",
+                      opacity: 1, transition: "var(--transition)",
                     }}
-                    onMouseOver={e => { if (!outOfStock) e.currentTarget.style.borderColor = "var(--accent-color)"; }}
+                    onMouseOver={e => { e.currentTarget.style.borderColor = "var(--accent-color)"; }}
                     onMouseOut={e => { if (!inCart) e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; }}
                   >
                     <strong style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", lineHeight: "1.3" }}>{p.name}</strong>
