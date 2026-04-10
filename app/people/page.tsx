@@ -30,8 +30,6 @@ export default function PeoplePage() {
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-
-
   const fetchPeople = async () => {
     try {
       const res = await fetch('/api/people');
@@ -77,7 +75,6 @@ export default function PeoplePage() {
     return true;
   });
 
-
   const totalCustomerDebt = people
     .filter((p) => p.type === 'CUSTOMER' && p.currentBalance > 0)
     .reduce((s, p) => s + p.currentBalance, 0);
@@ -94,19 +91,19 @@ export default function PeoplePage() {
           📊 تصدير إكسيل
         </button>
       </div>
+      
       <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-        إجمالي مستحقات العملاء:{' '}
+        إجمالي مستحقات العملاء:{" "}
         <strong style={{ color: 'var(--danger-color)' }}>
           {totalCustomerDebt.toLocaleString('en-US')} ج.م
         </strong>
-        &nbsp;|&nbsp; إجمالي مستحقات الموردين:{' '}
+        &nbsp;|&nbsp; إجمالي مستحقات الموردين:{" "}
         <strong style={{ color: '#f59e0b' }}>
           {totalSupplierDebt.toLocaleString('en-US')} ج.م
         </strong>
       </p>
 
       <div className="split-layout">
-        {/* Add Form */}
         <div className="glass-panel" style={{ height: 'fit-content' }}>
           <h3 style={{ marginBottom: '1rem' }}>إضافة جهة جديدة</h3>
           <form onSubmit={handleAdd}>
@@ -165,106 +162,104 @@ export default function PeoplePage() {
           </form>
         </div>
 
-        {/* Table Area */}
         <div className="glass-panel" style={{ padding: '20px', minWidth: 0 }}>
           <div className="table-responsive">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-            <h3 style={{ margin: 0 }}>دليل المتعاملين ({filtered.length})</h3>
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-              <select 
-                value={balanceFilter} 
-                onChange={(e) => setBalanceFilter(e.target.value)} 
-                className="input-field" 
-                style={{ width: '150px' }}
-              >
-                <option value="ALL">كل الأرصدة</option>
-                <option value="DEBT">عليهم ديون</option>
-                <option value="CREDIT">ليهم رصيد</option>
-                <option value="ZERO">رصيد صفري</option>
-              </select>
-              <input
-                type="text"
-                placeholder="🔍 ابحث بالاسم..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="input-field"
-                style={{ width: '250px' }}
-              />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h3 style={{ margin: 0 }}>دليل المتعاملين ({filtered.length})</h3>
+              <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+                <select 
+                  value={balanceFilter} 
+                  onChange={(e) => setBalanceFilter(e.target.value)} 
+                  className="input-field" 
+                  style={{ width: '150px' }}
+                >
+                  <option value="ALL">كل الأرصدة</option>
+                  <option value="DEBT">عليهم ديون</option>
+                  <option value="CREDIT">ليهم رصيد</option>
+                  <option value="ZERO">رصيد صفري</option>
+                </select>
+                <input
+                  type="text"
+                  placeholder="🔍 ابحث بالاسم..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="input-field"
+                  style={{ width: '250px' }}
+                />
+              </div>
             </div>
-          </div>
 
-          {loading ? (
-            <p style={{ color: 'var(--text-secondary)' }}>جاري تحميل الدليل...</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
-              <thead>
-                <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                  <th style={thStyle}>الاسم</th>
-                  <th style={thStyle}>التصنيف</th>
-                  <th style={thStyle}>الهاتف</th>
-                  <th style={thStyle}>العنوان</th>
-                  <th style={thStyle}>الرصيد الافتتاحي</th>
-                  <th style={thStyle}>الرصيد الحالي</th>
-                  <th style={thStyle}>الإجراءات</th>
-                </tr>
-              </thead>
-               <tbody>
+            {loading ? (
+              <p style={{ color: 'var(--text-secondary)' }}>جاري تحميل الدليل...</p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
+                    <th style={thStyle}>الاسم</th>
+                    <th style={thStyle}>التصنيف</th>
+                    <th style={thStyle}>الهاتف</th>
+                    <th style={thStyle}>العنوان</th>
+                    <th style={thStyle}>الرصيد الافتتاحي</th>
+                    <th style={thStyle}>الرصيد الحالي</th>
+                    <th style={thStyle}>الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
                   {filtered.length === 0 ? (
                     <tr>
                       <td colSpan={7} style={{ padding: '16px', color: 'var(--text-secondary)', textAlign: 'center' }}>
                         لا توجد نتائج مطابقة.
                       </td>
                     </tr>
-                ) : (
-                  filtered.map((p) => (
-                    <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                      <td style={{ padding: '12px', fontWeight: 'bold' }}>
-                        <a href={`/people/${p.id}/statement`} style={{ color: 'var(--text-primary)', textDecoration: 'underline' }}>
-                          {p.name}
-                        </a>
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        {p.type === 'CUSTOMER' ? '👤 عميل' : '🏢 مورد'}
-                      </td>
-                      <td style={{ padding: '12px' }} dir="ltr">
-                        {p.phone || '-'}
-                      </td>
-                      <td style={{ padding: '12px' }}>
-                        {p.address || '-'}
-                      </td>
-                      <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>
-                        {p.initialBalance !== 0 ? p.initialBalance.toLocaleString() : '-'}
-                      </td>
-                      <td style={{ padding: '12px', fontWeight: 'bold', fontSize: '1.1rem', color: getBalanceColor(p.currentBalance) }}>
-                        {p.currentBalance.toLocaleString()} ج.م
-                      </td>
-                      <td style={{ padding: '12px', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                        <a
-                          href={`/people/${p.id}/statement`}
-                          className="btn"
-                          style={{ color: 'var(--accent-color)', background: 'none', border: '1px solid var(--accent-color)', padding: '4px 10px', fontSize: '0.8rem', borderRadius: '6px' }}
-                        >
-                          📄 كشف حساب
-                        </a>
-                        <button
-                          onClick={() => setEditingPerson(p)}
-                          className="btn"
-                          style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', padding: '4px 10px', fontSize: '0.8rem', borderRadius: '6px' }}
-                        >
-                          ✏️ تعديل
-                        </button>
-                      </td>
-                    </tr>
-
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filtered.map((p) => (
+                      <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+                        <td style={{ padding: '12px', fontWeight: 'bold' }}>
+                          <a href={`/people/${p.id}/statement`} style={{ color: 'var(--text-primary)', textDecoration: 'underline' }}>
+                            {p.name}
+                          </a>
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          {p.type === 'CUSTOMER' ? '👤 عميل' : '🏢 مورد'}
+                        </td>
+                        <td style={{ padding: '12px' }} dir="ltr">
+                          {p.phone || '-'}
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          {p.address || '-'}
+                        </td>
+                        <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>
+                          {p.initialBalance !== 0 ? p.initialBalance.toLocaleString() : '-'}
+                        </td>
+                        <td style={{ padding: '12px', fontWeight: 'bold', fontSize: '1.1rem', color: getBalanceColor(p.currentBalance) }}>
+                          {p.currentBalance.toLocaleString()} ج.م
+                        </td>
+                        <td style={{ padding: '12px', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                          <a
+                            href={`/people/${p.id}/statement`}
+                            className="btn"
+                            style={{ color: 'var(--accent-color)', background: 'none', border: '1px solid var(--accent-color)', padding: '4px 10px', fontSize: '0.8rem', borderRadius: '6px' }}
+                          >
+                            📄 كشف حساب
+                          </a>
+                          <button
+                            onClick={() => setEditingPerson(p)}
+                            className="btn"
+                            style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', padding: '4px 10px', fontSize: '0.8rem', borderRadius: '6px' }}
+                          >
+                            ✏️ تعديل
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
-       </div>
+      </div>
 
-      {/* Edit Modal */}
       {editingPerson && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div className="glass-panel" style={{ width: '100%', maxWidth: '500px' }}>
@@ -308,39 +303,9 @@ export default function PeoplePage() {
                 onChange={e => setEditingPerson({...editingPerson, address: e.target.value})} 
               />
             </div>
-            <div className="input-group">
-              <label>الرصيد الافتتاحي</label>
-              <input 
-                type="number" 
-                className="input-field" 
-                value={editingPerson.initialBalance} 
-                onChange={e => setEditingPerson({...editingPerson, initialBalance: parseFloat(e.target.value) || 0})} 
-              />
-            </div>
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
-              <button 
-                onClick={async () => {
-                   if (!confirm('هل أنت متأكد من حذف هذه الجهة؟ لا يمكن الحذف في حال وجود فواتير.')) return;
-                   setSubmitting(true);
-                   try {
-                     const res = await fetch(`/api/people/${editingPerson.id}`, { method: 'DELETE' });
-                     const d = await res.json();
-                     if (res.ok) { setEditingPerson(null); fetchPeople(); }
-                     else alert(d.error);
-                   } catch (e) { alert('خطأ في الاتصال'); }
-                   setSubmitting(false);
-                }}
-                className="btn" 
-                style={{ background: 'var(--danger-color)', color: '#fff' }}
-              >حذف الجهة</button>
-              
-              <button 
-                onClick={() => setEditingPerson(null)} 
-                className="btn" 
-                style={{ background: 'rgba(255,255,255,0.1)' }}
-              >إلغاء</button>
-              
+              <button onClick={() => setEditingPerson(null)} className="btn" style={{ background: 'rgba(255,255,255,0.1)' }}>إلغاء</button>
               <button 
                 disabled={submitting}
                 onClick={async () => {
@@ -369,7 +334,6 @@ export default function PeoplePage() {
     </div>
   );
 }
-
 
 const thStyle: React.CSSProperties = {
   padding: '14px 12px',
