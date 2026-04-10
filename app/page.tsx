@@ -56,38 +56,38 @@ export default async function Home() {
       </h1>
       
       <div className="stats-grid">
-        <a href="/invoices?type=SALES" className="stat-card clickable-card" style={{ borderTop: '4px solid #3b82f6', textDecoration: 'none' }}>
-          <span className="stat-title">صافي المبيعات (Net Sales) ✦</span>
-          <span className="stat-value" style={{ color: '#2563eb' }}>{totalSales.toLocaleString('en-US')} ج.م</span>
-          <small style={{ color: 'var(--text-secondary)' }}>مطابق لشيت المبيعات (134,165)</small>
+        <a href="/invoices?type=SALES" className="stat-card clickable-card" style={{ borderTop: '4px solid var(--accent-color)', textDecoration: 'none' }}>
+          <span className="stat-title">صافي المبيعات (Sales) ✦</span>
+          <span className="stat-value" style={{ color: 'var(--accent-color)' }}>{totalSales.toLocaleString('en-US')} ج.م</span>
+          <small style={{ color: 'var(--text-secondary)' }}>إجمالي المبيعات المحققة</small>
         </a>
-        <a href="/invoices?type=PURCHASES" className="stat-card clickable-card" style={{ borderTop: '4px solid #10b981', textDecoration: 'none' }}>
-          <span className="stat-title">صافي المشتريات (Purchases)</span>
-          <span className="stat-value">{totalPurchases.toLocaleString('en-US')} ج.م</span>
+        <a href="/invoices?type=PURCHASES" className="stat-card clickable-card" style={{ borderTop: '4px solid var(--accent-color)', textDecoration: 'none' }}>
+          <span className="stat-title">وارد المخازن (Purchases)</span>
+          <span className="stat-value" style={{ color: 'var(--accent-color)' }}>{totalPurchases.toLocaleString('en-US')} ج.م</span>
         </a>
-        <a href="/inventory" className="stat-card clickable-card" style={{ borderTop: '4px solid #f59e0b', textDecoration: 'none' }}>
+        <a href="/inventory" className="stat-card clickable-card" style={{ borderTop: '4px solid var(--warning-color)', textDecoration: 'none' }}>
           <span className="stat-title">قيمة بضاعة المستودع 📦</span>
-          <span className="stat-value" style={{ color: '#d97706' }}>{totalInventoryValue.toLocaleString('en-US')} ج.م</span>
-          <small style={{ color: 'var(--text-secondary)' }}>بناءً على التكلفة المرجحة</small>
+          <span className="stat-value" style={{ color: 'var(--warning-color)' }}>{totalInventoryValue.toLocaleString('en-US')} ج.م</span>
+          <small style={{ color: 'var(--text-secondary)' }}>حسب المتوسط المرجح</small>
         </a>
-        <a href="/expenses" className="stat-card clickable-card" style={{ borderTop: '4px solid #ef4444', textDecoration: 'none' }}>
+        <a href="/expenses" className="stat-card clickable-card" style={{ borderTop: '4px solid var(--danger-color)', textDecoration: 'none' }}>
           <span className="stat-title">إجمالي المصروفات</span>
-          <span className="stat-value">{totalExpenses.toLocaleString('en-US')} ج.م</span>
+          <span className="stat-value" style={{ color: 'var(--danger-color)' }}>{totalExpenses.toLocaleString('en-US')} ج.م</span>
         </a>
       </div>
       
       <div className="stats-grid" style={{ marginTop: '1rem' }}>
-        <a href="/reports" className="stat-card clickable-card" style={{ borderTop: '6px solid #16a34a', background: 'rgba(22, 163, 74, 0.08)', textDecoration: 'none' }}>
+        <a href="/reports" className="stat-card clickable-card" style={{ borderTop: '6px solid var(--success-color)', background: 'rgba(16, 185, 129, 0.08)', textDecoration: 'none' }}>
           <span className="stat-title" style={{ fontWeight: 'bold' }}>صافي الربح الحقيقي 💰</span>
-          <span className="stat-value" style={{ color: '#16a34a', fontSize: '2rem' }}>{netProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ج.م</span>
+          <span className="stat-value" style={{ color: 'var(--success-color)' }}>{netProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ج.م</span>
         </a>
-        <a href="/people?filter=DEBT" className="stat-card clickable-card" style={{ borderTop: '4px solid #6366f1', textDecoration: 'none' }}>
+        <a href="/people?filter=DEBT" className="stat-card clickable-card" style={{ borderTop: '4px solid var(--danger-color)', textDecoration: 'none' }}>
           <span className="stat-title">مستحقات (عند العملاء)</span>
-          <span className="stat-value">{positiveDebts.toLocaleString('en-US')} ج.م</span>
+          <span className="stat-value" style={{ color: 'var(--danger-color)' }}>{positiveDebts.toLocaleString('en-US')} ج.م</span>
         </a>
-        <a href="/people?filter=CREDIT" className="stat-card clickable-card" style={{ borderTop: '4px solid #7c3aed', textDecoration: 'none' }}>
+        <a href="/people?filter=CREDIT" className="stat-card clickable-card" style={{ borderTop: '4px solid var(--warning-color)', textDecoration: 'none' }}>
           <span className="stat-title">مطلوبات (للموردين)</span>
-          <span className="stat-value">{negativeDebts.toLocaleString('en-US')} ج.م</span>
+          <span className="stat-value" style={{ color: 'var(--warning-color)' }}>{negativeDebts.toLocaleString('en-US')} ج.م</span>
         </a>
       </div>
 

@@ -278,7 +278,8 @@ export default function InventoryPage() {
           {/* Top 10 by inventory value */}
           <div className="glass-panel">
             <h3 style={{ marginBottom: '1rem' }}>🏆 Top 10 أصناف بأعلى قيمة مخزون</h3>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+            <div className="table-responsive">
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
               <thead>
                 <tr style={{ background: 'rgba(59,130,246,0.15)' }}>
                   <th style={th}>#</th>
@@ -301,6 +302,7 @@ export default function InventoryPage() {
               </tbody>
             </table>
           </div>
+          </div>
 
           {/* Top 10 by gross profit */}
           <div className="glass-panel">
@@ -308,7 +310,8 @@ export default function InventoryPage() {
             {topByProfit.length === 0 ? (
               <p style={{ color: 'var(--text-secondary)' }}>لا توجد مبيعات مسجلة بعد.</p>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+              <div className="table-responsive">
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
                   <tr style={{ background: 'rgba(59,130,246,0.15)' }}>
                     <th style={th}>#</th>
@@ -336,6 +339,7 @@ export default function InventoryPage() {
                   ))}
                 </tbody>
               </table>
+            </div>
             )}
           </div>
 
@@ -346,7 +350,8 @@ export default function InventoryPage() {
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1rem' }}>
                 هذه الأصناف بيانات المبيعات فيها أكبر من مجموع أول المدة + المشتريات. قد يكون السبب بيانات ناقصة في شيت المخزون.
               </p>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+              <div className="table-responsive">
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
                   <tr style={{ background: 'rgba(239,68,68,0.15)' }}>
                     <th style={{ ...th, textAlign: 'right' }}>الصنف</th>
@@ -369,13 +374,15 @@ export default function InventoryPage() {
                 </tbody>
               </table>
             </div>
+            </div>
           )}
 
           {/* Category breakdown */}
           {categories.length > 0 && (
             <div className="glass-panel">
               <h3 style={{ marginBottom: '1rem' }}>📂 تحليل حسب التصنيف</h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+              <div className="table-responsive">
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
                 <thead>
                   <tr style={{ background: 'rgba(59,130,246,0.15)' }}>
                     <th style={{ ...th, textAlign: 'right' }}>التصنيف</th>
@@ -406,6 +413,7 @@ export default function InventoryPage() {
                 </tbody>
               </table>
             </div>
+          </div>
           )}
         </div>
       )}

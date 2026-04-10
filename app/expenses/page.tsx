@@ -90,7 +90,7 @@ export default function ExpensesPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '350px 1fr', gap: '2rem' }}>
+      <div className="split-layout">
         {/* Add Expense Form */}
         <div className="glass-panel" style={{ height: 'fit-content' }}>
           <h3 style={{ marginBottom: '1.5rem' }}>إضافة مصروف جديد</h3>
@@ -161,7 +161,8 @@ export default function ExpensesPage() {
           {loading ? (
             <p>جاري التحميل...</p>
           ) : (
-            <table className="data-table">
+            <div className="table-responsive">
+              <table className="data-table">
               <thead>
                 <tr>
                   <th>التاريخ</th>
@@ -186,7 +187,8 @@ export default function ExpensesPage() {
                   </tr>
                 ))}
               </tbody>
-            </table>
+              </table>
+            </div>
           )}
         </div>
       </div>

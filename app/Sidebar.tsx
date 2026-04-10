@@ -19,8 +19,8 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
 
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h2 className="gradient-text" style={{ margin: 0 }}>Medical ERP</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+        <h2 className="gradient-text" style={{ margin: 0, fontSize: '1.8rem' }}>Antigravity ERP</h2>
         <button 
           onClick={onClose}
           className="mobile-only"
@@ -36,7 +36,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
         </button>
       </div>
       
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {menuItems.map((item) => {
           const isActive = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
           return (
@@ -47,10 +47,11 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
               className={`btn ${isActive ? 'btn-primary' : ''}`}
               style={{ 
                 justifyContent: 'flex-start',
-                background: isActive ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)',
+                background: isActive ? 'linear-gradient(135deg, var(--accent-color), #059669)' : 'rgba(255,255,255,0.02)',
                 color: isActive ? '#fff' : 'var(--text-primary)',
-                border: isActive ? 'none' : '1px solid transparent',
-                transition: 'all 0.3s ease'
+                border: '1px solid ' + (isActive ? 'transparent' : 'rgba(16, 185, 129, 0.05)'),
+                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                padding: '14px 20px'
               }}
             >
               {item.label}
@@ -59,7 +60,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
         })}
       </nav>
       <style jsx>{`
-        @media (min-width: 769px) {
+        @media (min-width: 1025px) {
           .mobile-only { display: none !important; }
         }
       `}</style>

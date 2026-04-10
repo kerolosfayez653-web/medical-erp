@@ -108,7 +108,7 @@ export default function PurchasesPage() {
     <div>
       <h1 style={{ marginBottom: "2rem" }}>فاتورة مشتريات جديدة</h1>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(320px, 1fr) 2fr", gap: "2rem" }}>
+      <div className="split-layout">
 
         {/* ── Left Panel: Supplier + Payment ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -229,7 +229,7 @@ export default function PurchasesPage() {
               onClick={submitInvoice}
               disabled={loading || cart.length === 0}
               className="btn btn-primary"
-              style={{ width: "100%", fontSize: "1.1rem", padding: "16px", background: "var(--success-color)" }}
+              style={{ width: "100%", fontSize: "1.1rem", padding: "16px" }}
             >
               {loading ? "⏳ جاري التنفيذ..." : "📥 تسجيل المشتريات للمخزن"}
             </button>
@@ -240,27 +240,28 @@ export default function PurchasesPage() {
         <div>
           {/* Cart */}
           {cart.length > 0 && (
-            <div className="glass-panel" style={{ marginBottom: "1.5rem", border: "1px solid var(--success-color)", overflowX: "auto" }}>
+            <div className="glass-panel" style={{ marginBottom: "1.5rem", border: "1px solid var(--success-color)", padding: "16px" }}>
               <h3 style={{ marginBottom: "1rem", color: "var(--success-color)" }}>
-                📋 أصناف الطلبية ({cart.length} صنف) — الإجمالي: {fmt(totalAmount)} ج.م
+                📋 أصناف الطلبية ({cart.length} صنف)
               </h3>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
+              <div className="table-responsive">
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
                 <thead>
-                  <tr style={{ background: "rgba(0,0,0,0.3)", textAlign: "center" }}>
-                    <th style={{ padding: "8px", textAlign: "right" }}>الصنف</th>
-                    <th style={{ padding: "8px" }}>الكمية</th>
-                    <th style={{ padding: "8px" }}>التشغيلة</th>
-                    <th style={{ padding: "8px" }}>الصلاحية</th>
-                    <th style={{ padding: "8px" }}>سعر الشراء</th>
-                    <th style={{ padding: "8px" }}>الإجمالي</th>
-                    <th style={{ padding: "8px" }}>حذف</th>
+                  <tr style={{ background: "rgba(255,255,255,0.03)", textAlign: "center" }}>
+                    <th style={{ padding: "12px", textAlign: "right", color: 'var(--success-color)' }}>الصنف</th>
+                    <th style={{ padding: "12px" }}>الكمية</th>
+                    <th style={{ padding: "12px" }}>التشغيلة</th>
+                    <th style={{ padding: "12px" }}>الصلاحية</th>
+                    <th style={{ padding: "12px" }}>سعر الشراء</th>
+                    <th style={{ padding: "12px" }}>الإجمالي</th>
+                    <th style={{ padding: "12px" }}>حذف</th>
                   </tr>
                 </thead>
                 <tbody>
                   {cart.map(item => (
                     <tr key={item.productId} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", textAlign: "center" }}>
-                      <td style={{ padding: "10px", fontWeight: "bold", textAlign: "right" }}>{item.name}</td>
-                      <td style={{ padding: "8px" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold", textAlign: "right" }}>{item.name}</td>
+                      <td style={{ padding: "12px" }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           <input type="number" min="1" value={item.quantity}
                             onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseInt(e.target.value) || 1 } : i))}
@@ -268,37 +269,38 @@ export default function PurchasesPage() {
                           <select 
                             value={item.unitType}
                             onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, unitType: e.target.value } : i))}
-                            style={{ fontSize: '0.75rem', padding: '2px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px' }}
+                            style={{ fontSize: '0.75rem', padding: '4px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px' }}
                           >
                             <option value="PRIMARY">{item.unit || 'علبة'}</option>
                             {item.secondaryUnit && <option value="SECONDARY">{item.secondaryUnit}</option>}
                           </select>
                         </div>
                       </td>
-                      <td style={{ padding: "8px" }}>
+                      <td style={{ padding: "12px" }}>
                         <input type="text" value={item.batchNumber}
                           onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, batchNumber: e.target.value } : i))}
-                          className="input-field" style={{ width: "90px", padding: "4px", fontSize: "0.8rem" }} />
+                          className="input-field" style={{ width: "100px", padding: "4px", fontSize: "0.8rem" }} />
                       </td>
-                      <td style={{ padding: "8px" }}>
+                      <td style={{ padding: "12px" }}>
                         <input type="date" value={item.expiryDate}
                           onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, expiryDate: e.target.value } : i))}
                           className="input-field" style={{ padding: "4px", fontSize: "0.8rem" }} />
                       </td>
-                      <td style={{ padding: "8px" }}>
+                      <td style={{ padding: "12px" }}>
                         <input type="number" step="0.01" value={item.price}
                           onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, price: parseFloat(e.target.value) || 0 } : i))}
-                          className="input-field" style={{ width: "80px", padding: "4px", textAlign: "center" }} />
+                          className="input-field" style={{ width: "90px", padding: "4px", textAlign: "center" }} />
                       </td>
-                      <td style={{ padding: "8px", fontWeight: "bold" }}>{fmt(item.price * item.quantity)}</td>
-                      <td style={{ padding: "8px" }}>
+                      <td style={{ padding: "12px", fontWeight: "bold", color: 'var(--success-color)' }}>{fmt(item.price * item.quantity)}</td>
+                      <td style={{ padding: "12px" }}>
                         <button onClick={() => setCart(cart.filter(i => i.productId !== item.productId))}
-                          style={{ background: "transparent", color: "var(--danger-color)", border: "none", cursor: "pointer", fontSize: "1rem" }}>✕</button>
+                          style={{ background: "transparent", color: "var(--danger-color)", border: "none", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
                       </td>
                     </tr>
                   ))}
                 </tbody>
-              </table>
+                </table>
+              </div>
             </div>
           )}
 
@@ -321,7 +323,7 @@ export default function PurchasesPage() {
                     onClick={() => addToCart(p)}
                     style={{
                       padding: "14px",
-                      background: inCart ? "rgba(34,197,94,0.12)" : "rgba(0,0,0,0.2)",
+                      background: inCart ? "rgba(16,185,129,0.12)" : "rgba(0,0,0,0.2)",
                       borderRadius: "8px", cursor: "pointer",
                       border: inCart ? "1px solid var(--success-color)" : "1px solid rgba(255,255,255,0.05)",
                       transition: "var(--transition)",

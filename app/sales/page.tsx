@@ -119,7 +119,7 @@ export default function SalesPage() {
     <div>
       <h1 style={{ marginBottom: "2rem" }}>فاتورة مبيعات جديدة</h1>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(320px, 1fr) 2fr", gap: "2rem" }}>
+      <div className="split-layout">
 
         {/* ── Left Panel: Customer + Payment ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
@@ -143,7 +143,7 @@ export default function SalesPage() {
 
             {/* Customer Info Card */}
             {selectedCustomer && (
-              <div style={{ marginTop: "1rem", background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.2)", borderRadius: "10px", padding: "14px" }}>
+              <div style={{ marginTop: "1rem", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "10px", padding: "14px" }}>
                 <div style={{ fontWeight: "bold", fontSize: "1.05rem", marginBottom: "8px", color: "var(--accent-color)" }}>
                   {selectedCustomer.name}
                 </div>
@@ -251,67 +251,69 @@ export default function SalesPage() {
         <div>
           {/* Cart */}
           {cart.length > 0 && (
-            <div className="glass-panel" style={{ marginBottom: "1.5rem", border: "1px solid var(--accent-color)" }}>
+            <div className="glass-panel" style={{ marginBottom: "1.5rem", border: "1px solid var(--accent-color)", padding: "16px" }}>
               <h3 style={{ marginBottom: "1rem", color: "var(--accent-color)" }}>
-                🛒 عناصر الفاتورة ({cart.length} صنف) — الإجمالي: {fmt(totalAmount)} ج.م
+                🛒 عناصر الفاتورة ({cart.length} صنف)
               </h3>
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
-                <thead>
-                  <tr style={{ background: "rgba(0,0,0,0.3)", textAlign: "center" }}>
-                    <th style={{ padding: "8px", textAlign: "right" }}>الصنف</th>
-                    <th style={{ padding: "8px" }}>الكمية</th>
-                    <th style={{ padding: "8px" }}>سعر البيع</th>
-                    <th style={{ padding: "8px" }}>الإجمالي</th>
-                    <th style={{ padding: "8px" }}>حذف</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cart.map(item => (
-                    <tr key={item.productId} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", textAlign: "center" }}>
-                      <td style={{ padding: "10px", fontWeight: "bold", textAlign: "right" }}>{item.name}</td>
-                      <td style={{ padding: "8px" }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <input
-                            type="number" min="1" value={item.quantity}
-                            onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseInt(e.target.value) || 1 } : i))}
-                            className="input-field" style={{ width: "70px", padding: "4px", textAlign: "center" }}
-                          />
-                          <select 
-                            value={item.unitType}
-                            onChange={e => {
-                               const ut = e.target.value;
-                               setCart(cart.map(i => i.productId === item.productId ? { 
-                                 ...i, 
-                                 unitType: ut,
-                                 price: ut === 'SECONDARY' ? i.secondaryPrice : i.primaryPrice 
-                               } : i));
-                            }}
-                            style={{ fontSize: '0.75rem', padding: '2px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '4px' }}
-                          >
-                            <option value="PRIMARY">{item.unit || 'علبة'}</option>
-                            {item.secondaryUnit && <option value="SECONDARY">{item.secondaryUnit}</option>}
-                          </select>
-                        </div>
-                      </td>
-                      <td style={{ padding: "8px" }}>
-                        <input
-                          type="number" step="0.01" value={item.price}
-                          onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, price: parseFloat(e.target.value) || 0 } : i))}
-                          className="input-field" style={{ width: "90px", padding: "4px", textAlign: "center" }}
-                        />
-                      </td>
-                      <td style={{ padding: "8px", fontWeight: "bold" }}>{fmt(item.price * item.quantity)}</td>
-                      <td style={{ padding: "8px" }}>
-                        <button
-                          onClick={() => setCart(cart.filter(i => i.productId !== item.productId))}
-                          style={{ background: "transparent", color: "var(--danger-color)", border: "none", cursor: "pointer", fontSize: "1rem" }}
-                        >✕</button>
-                      </td>
+                <div className="table-responsive">
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.9rem" }}>
+                  <thead>
+                    <tr style={{ background: "rgba(255,255,255,0.03)", textAlign: "center" }}>
+                      <th style={{ padding: "12px", textAlign: "right", color: 'var(--accent-color)' }}>الصنف</th>
+                      <th style={{ padding: "12px" }}>الكمية</th>
+                      <th style={{ padding: "12px" }}>سعر البيع</th>
+                      <th style={{ padding: "12px" }}>الإجمالي</th>
+                      <th style={{ padding: "12px" }}>حذف</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody>
+                    {cart.map(item => (
+                      <tr key={item.productId} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", textAlign: "center" }}>
+                        <td style={{ padding: "12px", fontWeight: "bold", textAlign: "right" }}>{item.name}</td>
+                        <td style={{ padding: "12px" }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <input
+                              type="number" min="1" value={item.quantity}
+                              onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseInt(e.target.value) || 1 } : i))}
+                              className="input-field" style={{ width: "70px", padding: "4px", textAlign: "center" }}
+                            />
+                            <select 
+                              value={item.unitType}
+                              onChange={e => {
+                                const ut = e.target.value;
+                                setCart(cart.map(i => i.productId === item.productId ? { 
+                                  ...i, 
+                                  unitType: ut,
+                                  price: ut === 'SECONDARY' ? i.secondaryPrice : i.primaryPrice 
+                                } : i));
+                              }}
+                              style={{ fontSize: '0.75rem', padding: '4px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                            >
+                              <option value="PRIMARY">{item.unit || 'علبة'}</option>
+                              {item.secondaryUnit && <option value="SECONDARY">{item.secondaryUnit}</option>}
+                            </select>
+                          </div>
+                        </td>
+                        <td style={{ padding: "12px" }}>
+                          <input
+                            type="number" step="0.01" value={item.price}
+                            onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, price: parseFloat(e.target.value) || 0 } : i))}
+                            className="input-field" style={{ width: "90px", padding: "4px", textAlign: "center" }}
+                          />
+                        </td>
+                        <td style={{ padding: "12px", fontWeight: "bold", color: 'var(--success-color)' }}>{fmt(item.price * item.quantity)}</td>
+                        <td style={{ padding: "12px" }}>
+                          <button
+                            onClick={() => setCart(cart.filter(i => i.productId !== item.productId))}
+                            style={{ background: "transparent", color: "var(--danger-color)", border: "none", cursor: "pointer", fontSize: "1.2rem" }}
+                          >✕</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+          </div>
           )}
 
           {/* Product Catalog */}
@@ -333,7 +335,7 @@ export default function SalesPage() {
                     key={p.id}
                     onClick={() => !outOfStock && addToCart(p)}
                     style={{
-                      padding: "14px", background: inCart ? "rgba(59,130,246,0.15)" : "rgba(0,0,0,0.2)",
+                      padding: "14px", background: inCart ? "rgba(16,185,129,0.15)" : "rgba(0,0,0,0.2)",
                       borderRadius: "8px", cursor: outOfStock ? "not-allowed" : "pointer",
                       border: inCart ? "1px solid var(--accent-color)" : "1px solid rgba(255,255,255,0.05)",
                       opacity: outOfStock ? 0.4 : 1, transition: "var(--transition)",

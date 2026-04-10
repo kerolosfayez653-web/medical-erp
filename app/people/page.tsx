@@ -162,8 +162,7 @@ export default function PeoplePage() {
           </form>
         </div>
 
-        <div className="glass-panel" style={{ padding: '20px', minWidth: 0 }}>
-          <div className="table-responsive">
+          <div style={{ padding: '20px', minWidth: 0 }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <h3 style={{ margin: 0 }}>دليل المتعاملين ({filtered.length})</h3>
               <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -189,19 +188,20 @@ export default function PeoplePage() {
               </div>
             </div>
 
+            <div className="table-responsive">
+
             {loading ? (
               <p style={{ color: 'var(--text-secondary)' }}>جاري تحميل الدليل...</p>
             ) : (
-              <table style={{ width: '100%', borderCollapse: 'collapse', whiteSpace: 'nowrap' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ background: 'rgba(0,0,0,0.2)' }}>
-                    <th style={thStyle}>الاسم</th>
-                    <th style={thStyle}>التصنيف</th>
-                    <th style={thStyle}>الهاتف</th>
-                    <th style={thStyle}>العنوان</th>
-                    <th style={thStyle}>الرصيد الافتتاحي</th>
-                    <th style={thStyle}>الرصيد الحالي</th>
-                    <th style={thStyle}>الإجراءات</th>
+                  <tr style={{ background: 'rgba(255,255,255,0.02)', borderBottom: '2px solid var(--border-color)' }}>
+                    <th style={{ ...thStyle, width: '25%' }}>الاسم الكامل</th>
+                    <th style={{ ...thStyle, width: '15%' }}>التصنيف</th>
+                    <th style={{ ...thStyle, width: '15%' }}>الهاتف</th>
+                    <th style={{ ...thStyle, width: '20%' }}>العنوان</th>
+                    <th style={{ ...thStyle, width: '12%' }}>الرصيد الحقيقي</th>
+                    <th style={{ ...thStyle, width: '13%', textAlign: 'center' }}>الإجراءات</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -213,39 +213,31 @@ export default function PeoplePage() {
                     </tr>
                   ) : (
                     filtered.map((p) => (
-                      <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-                        <td style={{ padding: '12px', fontWeight: 'bold' }}>
-                          <a href={`/people/${p.id}/statement`} style={{ color: 'var(--text-primary)', textDecoration: 'underline' }}>
+                      <tr key={p.id} className="clickable-row" style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                        <td style={{ padding: '16px 12px', fontWeight: 'bold' }}>
+                          <a href={`/people/${p.id}/statement`} style={{ color: 'var(--accent-color)', textDecoration: 'none' }}>
                             {p.name}
                           </a>
                         </td>
-                        <td style={{ padding: '12px' }}>
-                          {p.type === 'CUSTOMER' ? '👤 عميل' : '🏢 مورد'}
+                        <td style={{ padding: '16px 12px', fontSize: '0.85rem' }}>
+                          <span style={{ padding: '4px 8px', borderRadius: '4px', background: p.type === 'CUSTOMER' ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: p.type === 'CUSTOMER' ? 'var(--success-color)' : 'var(--warning-color)' }}>
+                            {p.type === 'CUSTOMER' ? '👤 عميل' : '🏢 مورد'}
+                          </span>
                         </td>
-                        <td style={{ padding: '12px' }} dir="ltr">
+                        <td style={{ padding: '16px 12px', whiteSpace: 'nowrap', fontSize: '0.85rem' }} dir="ltr">
                           {p.phone || '-'}
                         </td>
-                        <td style={{ padding: '12px' }}>
+                        <td style={{ padding: '16px 12px', fontSize: '0.85rem', opacity: 0.8 }}>
                           {p.address || '-'}
                         </td>
-                        <td style={{ padding: '12px', color: 'var(--text-secondary)' }}>
-                          {p.initialBalance !== 0 ? p.initialBalance.toLocaleString() : '-'}
-                        </td>
-                        <td style={{ padding: '12px', fontWeight: 'bold', fontSize: '1.1rem', color: getBalanceColor(p.currentBalance) }}>
+                        <td style={{ padding: '16px 12px', fontWeight: 'bold', fontSize: '1rem', color: getBalanceColor(p.currentBalance), whiteSpace: 'nowrap' }}>
                           {p.currentBalance.toLocaleString()} ج.م
                         </td>
-                        <td style={{ padding: '12px', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                          <a
-                            href={`/people/${p.id}/statement`}
-                            className="btn"
-                            style={{ color: 'var(--accent-color)', background: 'none', border: '1px solid var(--accent-color)', padding: '4px 10px', fontSize: '0.8rem', borderRadius: '6px' }}
-                          >
-                            📄 كشف حساب
-                          </a>
+                        <td style={{ padding: '16px 12px', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                           <button
                             onClick={() => setEditingPerson(p)}
                             className="btn"
-                            style={{ color: 'var(--text-primary)', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', padding: '4px 10px', fontSize: '0.8rem', borderRadius: '6px' }}
+                            style={{ color: '#fff', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', padding: '6px 12px', fontSize: '0.8rem' }}
                           >
                             ✏️ تعديل
                           </button>

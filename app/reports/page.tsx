@@ -87,7 +87,12 @@ export default function ReportsPage() {
           setMonthly(d.monthly);
           setAllInvoices(d.invoices || []);
           setAllExpenses(d.expenses || []);
+        } else {
+          console.error("Reports error:", d.error);
         }
+      })
+      .catch(err => {
+        console.error("Fetch reports failed:", err);
       })
       .finally(() => setLoading(false));
   };
@@ -110,17 +115,17 @@ export default function ReportsPage() {
 
   return (
     <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '1rem' }}>
-      <div className="glass-panel" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRight: '5px solid var(--accent-color)' }}>
+      <div className="glass-panel" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRight: '5px solid var(--accent-color)', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h1 className="gradient-text" style={{ margin: 0, fontSize: '2rem' }}>📊 التقارير المالية والختامية</h1>
-          <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0 0' }}>تحليل شامل للمركز المالي الفترة: {month === 'ALL' ? year : `${MONTHS_AR[month]} ${year}`}</p>
+          <h1 className="gradient-text" style={{ margin: 0, fontSize: '1.8rem' }}>📊 التقارير والمركز المالي</h1>
+          <p style={{ color: 'var(--text-secondary)', margin: '8px 0 0 0' }}>تحليل شامل - الفترة: {month === 'ALL' ? year : `${MONTHS_AR[month]} ${year}`}</p>
         </div>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <select value={year} onChange={e => setYear(parseInt(e.target.value))} className="input-field" style={{ width: '100px' }}>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <select value={year} onChange={e => setYear(parseInt(e.target.value))} className="input-field" style={{ width: '90px', padding: '6px' }}>
             <option value={2026}>2026</option>
             <option value={2025}>2025</option>
           </select>
-          <select value={month} onChange={e => setMonth(e.target.value)} className="input-field" style={{ width: '140px' }}>
+          <select value={month} onChange={e => setMonth(e.target.value)} className="input-field" style={{ width: '120px', padding: '6px' }}>
             <option value="ALL">كل الشهور</option>
             {Object.entries(MONTHS_AR).map(([mo, name]) => <option key={mo} value={mo}>{name}</option>)}
           </select>
@@ -128,25 +133,25 @@ export default function ReportsPage() {
       </div>
 
       {/* Tabs Navigation */}
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
+      <div className="stack-mobile" style={{ gap: '1rem', marginBottom: '2rem' }}>
         <button 
           onClick={() => setActiveTab("income")}
           className={`btn ${activeTab === 'income' ? 'btn-primary' : ''}`}
-          style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: activeTab === 'income' ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: activeTab === 'income' ? '' : 'rgba(255,255,255,0.02)', border: '1px solid rgba(16, 185, 129, 0.1)', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
         >
           📈 قائمة الدخل (P&L)
         </button>
         <button 
           onClick={() => setActiveTab("balance")}
           className={`btn ${activeTab === 'balance' ? 'btn-primary' : ''}`}
-          style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: activeTab === 'balance' ? 'var(--accent-color)' : 'rgba(255,255,255,0.05)', border: 'none', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
+          style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: activeTab === 'balance' ? '' : 'rgba(255,255,255,0.02)', border: '1px solid rgba(16, 185, 129, 0.1)', color: '#fff', cursor: 'pointer', fontWeight: 'bold' }}
         >
           ⚖️ المركز المالي (Balance Sheet)
         </button>
       </div>
 
       {activeTab === "income" ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(450px, 1fr))', gap: '2rem' }}>
+        <div className="stats-grid" style={{ gap: '2rem' }}>
           
           {/* Statement 1: Income Statement */}
           <div className="glass-panel" style={{ padding: '2rem', flex: 1 }}>
@@ -315,7 +320,7 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '3rem' }}>
+          <div className="stats-grid" style={{ gap: '2rem', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))' }}>
             {/* Left Column: Assets */}
             <div>
               <h3 style={{ borderBottom: '1px solid var(--success-color)', color: 'var(--success-color)', paddingBottom: '8px' }}>الأصول (Assets)</h3>
@@ -390,15 +395,16 @@ export default function ReportsPage() {
       {/* Detail Modal Overlay */}
       {showModal && (
         <div style={modalOverlay} onClick={() => setShowModal(false)} className="fade-in">
-          <div className="glass-panel" style={modalContent} onClick={e => e.stopPropagation()}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem' }}>
-              <h2 style={{ margin: 0 }}>🔍 {modalTitle}</h2>
-              <button onClick={() => setShowModal(false)} className="btn" style={{ padding: '0.5rem 1rem', background: 'var(--danger-color)' }}>إغلاق</button>
+          <div className="glass-panel" style={{ ...modalContent, padding: '1.5rem' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <h2 style={{ margin: 0, fontSize: '1.4rem' }}>🔍 {modalTitle}</h2>
+              <button onClick={() => setShowModal(false)} className="btn btn-primary" style={{ padding: '0.6rem 1.2rem', background: 'var(--danger-color)' }}>إغلاق</button>
             </div>
 
             <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
               {modalType === "invoices" && (
-                <table style={detailTable}>
+                <div className="table-responsive">
+                  <table style={detailTable}>
                   <thead>
                     <tr>
                       <th>التاريخ</th>
@@ -422,10 +428,12 @@ export default function ReportsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
               )}
 
               {modalType === "expenses" && (
-                <table style={detailTable}>
+                <div className="table-responsive">
+                  <table style={detailTable}>
                   <thead>
                     <tr>
                       <th>التاريخ</th>
@@ -447,10 +455,12 @@ export default function ReportsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
               )}
 
               {modalType === "cash" && (
-                <table style={detailTable}>
+                <div className="table-responsive">
+                  <table style={detailTable}>
                   <thead>
                     <tr>
                       <th>التاريخ</th>
@@ -474,10 +484,12 @@ export default function ReportsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
               )}
 
               {modalType === "customers" && (
-                <table style={detailTable}>
+                <div className="table-responsive">
+                  <table style={detailTable}>
                   <thead>
                     <tr>
                       <th>اسم العميل</th>
@@ -499,31 +511,34 @@ export default function ReportsPage() {
                     ))}
                   </tbody>
                 </table>
+              </div>
               )}
 
               {modalType === "suppliers" && (
-                <table style={detailTable}>
-                  <thead>
-                    <tr>
-                      <th>اسم المورد</th>
-                      <th>الرصيد الافتتاحي</th>
-                      <th>إجمالي المشتريات (+)</th>
-                      <th>إجمالي المدفوعات (-)</th>
-                      <th>الرصيد الحالي (=)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modalData.map((s, idx) => (
-                      <tr key={idx}>
-                        <td style={{ fontWeight: 'bold' }}>{s.name}</td>
-                        <td>{fmt(s.initial)}</td>
-                        <td style={{ color: 'var(--success-color)' }}>{fmt(s.purchases)}</td>
-                        <td style={{ color: 'var(--danger-color)' }}>{fmt(s.paid)}</td>
-                        <td style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.03)' }}>{fmt(s.balance)}</td>
+                <div className="table-responsive">
+                  <table style={detailTable}>
+                    <thead>
+                      <tr>
+                        <th>اسم المورد</th>
+                        <th>الرصيد الافتتاحي</th>
+                        <th>إجمالي المشتريات (+)</th>
+                        <th>إجمالي المدفوعات (-)</th>
+                        <th>الرصيد الحالي (=)</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {modalData.map((s, idx) => (
+                        <tr key={idx}>
+                          <td style={{ fontWeight: 'bold' }}>{s.name}</td>
+                          <td>{fmt(s.initial)}</td>
+                          <td style={{ color: 'var(--success-color)' }}>{fmt(s.purchases)}</td>
+                          <td style={{ color: 'var(--danger-color)' }}>{fmt(s.paid)}</td>
+                          <td style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.03)' }}>{fmt(s.balance)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
 
               {modalType === "profit_summary" && (
@@ -597,26 +612,28 @@ export default function ReportsPage() {
               )}
 
               {modalType === "inventory" && (
-                <table style={detailTable}>
-                  <thead>
-                    <tr>
-                      <th>اسم الصنف</th>
-                      <th>الكمية المتاحة</th>
-                      <th>متوسط التكلفة (WAC)</th>
-                      <th>إجمالي القيمة (ج.م)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modalData.map((p, idx) => (
-                      <tr key={idx}>
-                        <td style={{ fontWeight: 'bold' }}>{p.name}</td>
-                        <td style={{ color: p.qty < 0 ? 'var(--danger-color)' : 'inherit' }}>{p.qty}</td>
-                        <td>{fmt(p.wac)}</td>
-                        <td style={{ fontWeight: 'bold', color: 'var(--warning-color)' }}>{fmt(p.value)}</td>
+                <div className="table-responsive">
+                  <table style={detailTable}>
+                    <thead>
+                      <tr>
+                        <th>اسم الصنف</th>
+                        <th>الكمية المتاحة</th>
+                        <th>متوسط التكلفة (WAC)</th>
+                        <th>إجمالي القيمة (ج.م)</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {modalData.map((p, idx) => (
+                        <tr key={idx}>
+                          <td style={{ fontWeight: 'bold' }}>{p.name}</td>
+                          <td style={{ color: p.qty < 0 ? 'var(--danger-color)' : 'inherit' }}>{p.qty}</td>
+                          <td>{fmt(p.wac)}</td>
+                          <td style={{ fontWeight: 'bold', color: 'var(--warning-color)' }}>{fmt(p.value)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
             {modalData.length === 0 && <div style={{ textAlign: 'center', padding: '2rem', opacity: 0.5 }}>لم يتم العثور على بيانات تفصيلية.</div>}

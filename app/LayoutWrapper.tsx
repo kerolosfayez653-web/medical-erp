@@ -54,7 +54,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
       </main>
 
       <style jsx>{`
-        @media (min-width: 769px) {
+        @media (min-width: 1025px) {
           button { display: none !important; }
           .desktop-only { display: block !important; }
         }
