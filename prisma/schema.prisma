@@ -1,0 +1,152 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "rhel-openssl-3.0.x"]
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
+}
+
+// الأصناف والمستلزمات الطبية
+model Product {
+  id                  Int            @id @default(autoincrement())
+  name                String
+  category            String?        // التصنيف العام
+  classification      String?        // التصنيف (من شيت المخزون)
+  unit                String?        @default("قطعه")
+  secondaryUnit       String?        
+  conversionFactor    Int            @default(1)
+  barcode             String?        @unique
+  
+  // بيانات 1/1/2026 من الإكسيل
+  openingQty          Float          @default(0) 
+  openingWeightedAvg  Float          @default(0) 
+  
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+
+  lots                InventoryLot[]
+  invoiceItems        InvoiceItem[]
+}
+
+// المخزون وتشغيلات تواريخ الصلاحية (Batch & Expiry Date)
+model InventoryLot {
+  id            Int       @id @default(autoincrement())
+  productId     Int
+  product       Product   @relation(fields: [productId], references: [id])
+  batchNumber   String    // رقم التشغيلة
+  expiryDate    DateTime  // تاريخ الصلاحية
+  quantity      Int       // الكمية الحالية في هذا التشغيل
+  costPrice     Float     // سعر الشراء 
+  sellingPrice  Float     // سعر البيع
+  createdAt     DateTime  @default(now())
+
+  invoiceItems  InvoiceItem[]
+}
+
+// الأشخاص (عملاء أو موردين)
+model Person {
+  id              Int       @id @default(autoincrement())
+  name            String
+  type            String    // "CUSTOMER" أو "SUPPLIER"
+  phone           String?
+  address         String?
+  initialBalance  Float     @default(0) // الرصيد الافتتاحي (ديون سابقة)
+  currentBalance  Float     @default(0) // الرصيد الحالي (موجب أو سالب)
+
+  invoices        Invoice[]
+  payments        Payment[]
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// الفواتير (نقدية/آجلة، مبيعات/مشتريات)
+model Invoice {
+  id            Int       @id @default(autoincrement())
+  invoiceNumber String?   // رقم الفاتورة (مثلاً INV-O26...)
+  serialNumber  Int?      // مسلسل الفاتورة (من الإكسيل)
+  type          String    // "SALES", "PURCHASES", "SALES_RETURN", "PURCHASES_RETURN"
+  personId      Int?      
+  person        Person?   @relation(fields: [personId], references: [id])
+  date          DateTime  @default(now())
+  
+  totalAmount   Float     // الإجمالي (قبل التوصيل)
+  paidAmount    Float     @default(0)
+  paymentStatus String    // "CASH", "CREDIT"
+  paymentMethod String?   
+  discount      Float     @default(0)
+  deliveryFee   Float     @default(0)
+  netAmount     Float     @default(0) // الصافي النهائي (بعد الخصم والوصيل)
+  cogs          Float     @default(0) // تكلفة البضاعة المباعة
+  
+  items         InvoiceItem[]
+  payments      Payment[]
+  logs          InvoiceLog[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// سجل تعديلات الفواتير
+model InvoiceLog {
+  id            Int       @id @default(autoincrement())
+  invoiceId     Int?
+  invoice       Invoice?  @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  action        String    // "EDIT", "DELETE"
+  oldData       String    // JSON snapshot
+  newData       String?   // JSON snapshot
+  reason        String?
+  createdAt     DateTime  @default(now())
+}
+
+// محتويات الفاتورة
+model InvoiceItem {
+  id            Int           @id @default(autoincrement())
+  invoiceId     Int
+  invoice       Invoice       @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  
+  productId     Int
+  product       Product       @relation(fields: [productId], references: [id])
+  
+  lotId         Int?          
+  lot           InventoryLot? @relation(fields: [lotId], references: [id])
+  
+  quantity      Int           
+  unitType      String        @default("PRIMARY")
+  price         Float         
+  costPrice     Float?        
+  discount      Float         @default(0)
+  total         Float         // quantity * price
+  totalNet      Float         @default(0) // الصافي للصنف (بعد خصم الصنف)
+}
+
+// سندات القبض والدفع (حركة الأموال)
+model Payment {
+  id            Int       @id @default(autoincrement())
+  personId      Int
+  person        Person    @relation(fields: [personId], references: [id])
+  
+  invoiceId     Int?      // قد ترتبط بفاتورة معينة أو دفعة على الحساب العام
+  invoice       Invoice?  @relation(fields: [invoiceId], references: [id])
+  
+  amount        Float
+  type          String    // "IN" (سند قبض للعملاء), "OUT" (سند دفع للموردين)
+  method        String?   // "كاش", "انستاباي", "اكسيس باي"
+  date          DateTime  @default(now())
+  notes         String?
+}
+// المصروفات
+model Expense {
+  id            Int      @id @default(autoincrement())
+  date          DateTime @default(now())
+  category      String   // نوع المصروف (مسحوبات، انتقالات، مرتبات، إلخ)
+  description   String?  // البيان
+  amount        Float    // المبلغ
+  paymentMethod String?  // طريقة الدفع
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
