@@ -14,10 +14,29 @@ export async function GET(request: Request) {
     let fileName = 'export.xlsx';
     let sheetName = 'Data';
 
-    if (type === 'people') {
-      const people = await prisma.person.findMany({
-        orderBy: { name: 'asc' }
+    // Helper: Optimized WAC (Database Level)
+    const getWACMap = async (endDate: Date) => {
+      const products = await prisma.product.findMany({
+        select: { id: true, openingQty: true, openingWeightedAvg: true }
       });
+      const purchaseAgg = await prisma.invoiceItem.groupBy({
+        by: ['productId'],
+        where: { invoice: { type: 'PURCHASES', date: { lt: endDate } } },
+        _sum: { quantity: true, totalNet: true }
+      });
+      const purMap = new Map(purchaseAgg.map(i => [i.productId, i]));
+      const wacMap = new Map();
+      products.forEach(p => {
+        const agg = purMap.get(p.id);
+        const q = p.openingQty + (agg?._sum?.quantity || 0);
+        const v = (p.openingQty * p.openingWeightedAvg) + (agg?._sum?.totalNet || 0);
+        wacMap.set(p.id, q > 0 ? v / q : p.openingWeightedAvg);
+      });
+      return wacMap;
+    };
+
+    if (type === 'people') {
+      const people = await prisma.person.findMany({ orderBy: { name: 'asc' } });
       fileName = 'العملاء_والموردين.xlsx';
       sheetName = 'الأرصدة';
       data = people.map(p => ({
@@ -31,27 +50,42 @@ export async function GET(request: Request) {
       }));
     } 
     else if (type === 'inventory') {
+      const wacMap = await getWACMap(new Date());
       const products = await prisma.product.findMany({
         include: { lots: true },
         orderBy: { name: 'asc' }
       });
+      
+      const salesHistory = await prisma.invoiceItem.groupBy({
+        by: ['productId'],
+        where: { invoice: { type: 'SALES' } },
+        _sum: { quantity: true }
+      });
+      const salesMap = new Map(salesHistory.map(i => [i.productId, i._sum.quantity || 0]));
+
       fileName = 'جرد_المستودع.xlsx';
       sheetName = 'المخزن';
       data = products.map(p => {
-        const totalQty = p.lots.reduce((sum, lot) => sum + lot.quantity, 0);
+        const pPurchased = (await prisma.invoiceItem.aggregate({
+          where: { productId: p.id, invoice: { type: 'PURCHASES' } },
+          _sum: { quantity: true }
+        }))._sum.quantity || 0;
+        const totalQty = p.openingQty + pPurchased - (salesMap.get(p.id) || 0);
+        const wac = wacMap.get(p.id) || 0;
         return {
           'اسم الصنف': p.name,
           'الباركود': p.barcode || '',
           'الفئة': p.category || '',
           'الكمية المتوفرة': totalQty,
           'الوحدة': p.unit || '',
-          'متوسط التكلفة': p.weightedAvgCost,
-          'إجمالي القيمة': totalQty * p.weightedAvgCost
+          'متوسط التكلفة (WAC)': wac,
+          'إجمالي القيمة': totalQty * wac
         };
       });
+      // Optimization: Promise.all for mapping if needed, but for export it's okay.
     }
     else if (type === 'invoices') {
-      const invType = searchParams.get('invType'); // SALES or PURCHASES
+      const invType = searchParams.get('invType');
       const invoices = await prisma.invoice.findMany({
         where: invType ? { type: invType as any } : {},
         include: { person: { select: { name: true } } },
@@ -62,10 +96,13 @@ export async function GET(request: Request) {
       data = invoices.map(inv => ({
         'رقم الفاتورة': inv.invoiceNumber || inv.id,
         'التاريخ': inv.date.toLocaleDateString('ar-EG'),
-        'العميل/المورد': inv.person.name,
+        'العميل/المورد': inv.person?.name || 'غير محدد',
         'الإجمالي': inv.totalAmount,
+        'الخصم': inv.discount || 0,
+        'التوصيل': inv.deliveryFee || 0,
+        'الصافي': inv.netAmount,
         'المدفوع': inv.paidAmount,
-        'الحالة': inv.paymentStatus === 'CASH' ? 'مسدد' : (inv.paymentStatus === 'PARTIAL' ? 'جزئي' : 'آجل'),
+        'الحالة': inv.paymentStatus === 'CASH' ? 'مسدد' : 'آجل',
         'طريقة السداد': inv.paymentMethod || ''
       }));
     }
@@ -74,14 +111,12 @@ export async function GET(request: Request) {
       const person = await prisma.person.findUnique({ where: { id: pId } });
       if (!person) throw new Error('Person not found');
 
-      // Re-use logic from statement API
       const invoices = await prisma.invoice.findMany({ where: { personId: pId }, orderBy: { date: 'asc' } });
       const payments = await prisma.payment.findMany({ where: { personId: pId }, orderBy: { date: 'asc' } });
 
       const entries: any[] = [];
       let runningBalance = person.initialBalance;
 
-      // Initial
       entries.push({ 'التاريخ': 'سابق', 'البيان': 'رصيد أول المدة', 'مدين': person.initialBalance > 0 ? person.initialBalance : 0, 'دائن': person.initialBalance < 0 ? Math.abs(person.initialBalance) : 0, 'الرصيد': runningBalance });
 
       const allEvents = [
@@ -94,8 +129,8 @@ export async function GET(request: Request) {
         if (event.type === 'INV') {
           const inv = event.data;
           desc = `فاتورة ${inv.type === 'SALES' ? 'مبيعات' : 'مشتريات'} ${inv.invoiceNumber || inv.id}`;
-          if (inv.type === 'SALES') debit = inv.totalAmount;
-          else credit = inv.totalAmount;
+          if (inv.type === 'SALES') debit = inv.netAmount;
+          else credit = inv.netAmount;
         } else {
           const pay = event.data;
           desc = pay.notes || 'سداد/تحصيل';
@@ -116,13 +151,9 @@ export async function GET(request: Request) {
       sheetName = 'كشف الحساب';
     }
 
-    // Generate Excel
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
-    
-    // Set RTL
     ws['!dir'] = 'rtl';
-    
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 

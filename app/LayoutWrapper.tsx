@@ -1,53 +1,80 @@
 "use client";
-import React from 'react';
-import { usePathname } from 'next/navigation';
-import Sidebar from './Sidebar';
+import React, { useState, useEffect } from "react";
+import Sidebar from "./Sidebar";
 
-export default function LayoutWrapper({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-  const isPublicPage = pathname.startsWith('/pay') || pathname.endsWith('/print');
+interface LayoutWrapperProps {
+  children: React.ReactNode;
+}
 
-  if (isPublicPage) {
-    return <>{children}</>;
-  }
+export default function LayoutWrapper({ children }: LayoutWrapperProps) {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [theme, setTheme] = useState<"light" | "dark">("dark");
+
+  useEffect(() => {
+    // Load persisted theme
+    const savedTheme = localStorage.getItem("theme") as "light" | "dark";
+    if (savedTheme) {
+      setTheme(savedTheme);
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    } else {
+      // Default to dark
+      document.documentElement.setAttribute("data-theme", "dark");
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === "dark" ? "light" : "dark";
+    setTheme(newTheme);
+    document.documentElement.setAttribute("data-theme", newTheme);
+    localStorage.setItem("theme", newTheme);
+  };
 
   return (
     <div className="app-container">
-      {/* Mobile Overlay */}
-      {isSidebarOpen && (
-        <div className="mobile-overlay" onClick={() => setIsSidebarOpen(false)} />
+      {/* Sidebar Overlay for Mobile */}
+      {sidebarOpen && (
+        <div 
+          className="mobile-overlay"
+          onClick={() => setSidebarOpen(false)}
+        />
       )}
 
-      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+      <Sidebar 
+        isOpen={sidebarOpen} 
+        onClose={() => setSidebarOpen(false)} 
+      />
 
-      {/* Main Content Area */}
       <main>
         <header className="glass-header">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            {/* Mobile Menu Toggle */}
+          <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <button 
-              className="no-print"
-              onClick={() => setIsSidebarOpen(true)}
-              style={{ 
-                background: 'none', 
-                border: 'none', 
-                color: 'var(--text-primary)', 
-                fontSize: '1.5rem', 
-                cursor: 'pointer',
-                display: 'block', // Overridden by media query
-              }}
+              onClick={() => setSidebarOpen(true)}
+              className="btn"
+              style={{ padding: "8px", border: "none", background: "none", fontSize: "1.5rem" }}
             >
               ☰
             </button>
-            <h3 className="gradient-text" style={{ margin: 0 }}>24MED</h3>
+            <div style={{ fontWeight: "800", fontSize: "1.4rem" }}>
+              <span className="gradient-text">24MED</span>
+              <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginRight: "8px" }}>نظام إدارة التوزيع</span>
+            </div>
           </div>
-          
-          <div style={{ display: 'none' }} className="desktop-only text-secondary">
-             اليوم: {new Date().toLocaleDateString('ar-EG')}
+
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+             <button 
+                onClick={toggleTheme}
+                className="theme-toggle-btn no-print"
+                title={theme === "dark" ? "الوضع الفاتح" : "الوضع الليلي"}
+              >
+                {theme === "dark" ? "☀️" : "🌙"}
+             </button>
+             <div className="desktop-only" style={{ textAlign: "right", borderRight: "1px solid var(--border-color)", paddingRight: "15px" }}>
+                <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>مرحباً بك</div>
+                <div style={{ fontSize: "0.95rem", fontWeight: "bold" }}>المدير العام</div>
+             </div>
           </div>
         </header>
-        
+
         <div className="main-content">
           {children}
         </div>
@@ -57,6 +84,7 @@ export default function LayoutWrapper({ children }: { children: React.ReactNode 
         @media (min-width: 1025px) {
           button { display: none !important; }
           .desktop-only { display: block !important; }
+          .theme-toggle-btn { display: flex !important; }
         }
       `}</style>
     </div>
