@@ -1,39 +1,36 @@
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;800&display=swap');
 
 :root {
-  /* LIGHT MODE (Premium Stone/Slate) */
-  --bg-primary: #f8fafc;
-  --bg-secondary: #ffffff;
-  --bg-glass: rgba(255, 255, 255, 0.9);
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
+  /* Common Tokens */
   --accent-color: #10b981;
   --accent-hover: #059669;
-  --danger-color: #e11d48;
+  --danger-color: #f43f5e;
   --success-color: #10b981;
   --warning-color: #f59e0b;
-  --border-color: rgba(16, 185, 129, 0.15);
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
   --radius-md: 12px;
   --radius-lg: 20px;
   --radius-full: 9999px;
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+[data-theme='light'] {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-glass: rgba(255, 255, 255, 0.9);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --border-color: rgba(16, 185, 129, 0.15);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  --shadow-glass: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+}
+
 [data-theme='dark'] {
-  /* PREMIUM DARK MODE (Anthracite/Obsidian) */
-  --bg-primary: #080c10;
-  --bg-secondary: #0f171e;
-  --bg-glass: rgba(15, 23, 30, 0.85);
+  --bg-primary: #05080a;
+  --bg-secondary: #0d151c;
+  --bg-glass: rgba(13, 21, 28, 0.85);
   --text-primary: #f1f5f9;
   --text-secondary: #94a3b8;
-  --accent-color: #10b981;
-  --accent-hover: #059669;
-  --danger-color: #f43f5e;
-  --success-color: #10b981;
-  --warning-color: #fbbf24;
   --border-color: rgba(16, 185, 129, 0.1);
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.7);

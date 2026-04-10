@@ -163,8 +163,11 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
           <button onClick={() => window.location.href=`/api/export?type=statement&personId=${id}`} className="btn" style={{ background: '#10b981', color: 'white', padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
             📊 تصدير إكسيل
           </button>
-          <button onClick={handlePrint} className="btn btn-primary" style={{ gap: "6px" }}>
-            🖨️ طباعة / PDF
+          <button onClick={handlePrint} className="btn" style={{ background: '#3b82f6', color: 'white', border: 'none' }}>
+            🖨️ طباعة الكشف
+          </button>
+          <button onClick={handlePrint} className="btn" style={{ background: '#f43f5e', color: 'white', border: 'none' }}>
+            📄 تصدير PDF
           </button>
           <button 
             onClick={() => setShowPaymentModal(true)} 

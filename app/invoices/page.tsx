@@ -100,7 +100,10 @@ export default function InvoicesHistoryPage() {
           <h1 className="gradient-text" style={{ margin: 0 }}>سجل الفواتير</h1>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
             <button onClick={() => window.location.href=`/api/export?type=invoices&invType=${filterType}`} className="btn" style={{ background: '#10b981', color: 'white' }}>
-              📊 تصدير إكسيل
+              📊 إكسيل
+            </button>
+            <button onClick={() => window.print()} className="btn" style={{ background: '#f43f5e', color: 'white' }}>
+              📄 تصدير PDF
             </button>
             <input 
                 type="text" 
@@ -255,8 +258,9 @@ export default function InvoicesHistoryPage() {
                              </td>
                              <td style={{ padding: '12px 8px' }}>
                                 <div style={{ display: 'flex', gap: '5px' }}>
-                                  <button onClick={(e) => { e.stopPropagation(); window.open(`/invoices/${inv.id}/print`, '_blank'); }} className="btn" style={{ padding: '4px 8px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.1)' }}>🖨️</button>
-                                  <button onClick={(e) => { e.stopPropagation(); setExpandedInvoiceId(expandedInvoiceId === inv.id ? null : inv.id); }} className="btn" style={{ padding: '4px 8px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)' }}>{expandedInvoiceId === inv.id ? "▲" : "▼"}</button>
+                                  <button onClick={(e) => { e.stopPropagation(); window.open(`/invoices/${inv.id}/print`, '_blank'); }} className="btn" style={{ padding: '4px 8px', fontSize: '0.8rem', background: '#3b82f6', color: '#fff', border: 'none' }} title="طباعة">🖨️</button>
+                                  <button onClick={(e) => { e.stopPropagation(); window.open(`/invoices/${inv.id}/print`, '_blank'); }} className="btn" style={{ padding: '4px 8px', fontSize: '0.8rem', background: '#f43f5e', color: '#fff', border: 'none' }} title="PDF">📄</button>
+                                  <button onClick={(e) => { e.stopPropagation(); setExpandedInvoiceId(expandedInvoiceId === inv.id ? null : inv.id); }} className="btn" style={{ padding: '4px 12px', fontSize: '0.8rem', background: 'rgba(255,255,255,0.05)' }}>{expandedInvoiceId === inv.id ? "▲" : "▼"}</button>
                                 </div>
                              </td>
                           </tr>
