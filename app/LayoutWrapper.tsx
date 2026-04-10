@@ -45,6 +45,21 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
       />
 
       <main>
+        {/* EMERGENCY SYNC INDICATOR - v1.1.3 */}
+        <div style={{ 
+          background: '#ef4444', 
+          color: 'white', 
+          textAlign: 'center', 
+          padding: '8px', 
+          fontSize: '14px', 
+          fontWeight: 'bold',
+          zIndex: 9999,
+          position: 'relative',
+          boxShadow: '0 2px 10px rgba(0,0,0,0.3)'
+        }}>
+          ⚠️ [تم تحديث السيستم بنجاح - الإصدار v1.1.3] - إذا كنت ترى هذا الشريط فالسيستم محدث
+        </div>
+
         <header className="glass-header">
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
             <button 
