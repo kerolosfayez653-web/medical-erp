@@ -56,7 +56,8 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
             </button>
             <div style={{ fontWeight: "800", fontSize: "1.4rem" }}>
               <span className="gradient-text">24MED</span>
-              <span style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginRight: "8px" }}>نظام إدارة التوزيع</span>
+              <span style={{ fontSize: "0.75rem", color: "var(--danger-color)", marginRight: "8px", verticalAlign: "middle", background: "rgba(239,68,68,0.1)", padding: "2px 6px", borderRadius: "4px" }}>v1.1.3</span>
+              <span className="desktop-only" style={{ fontSize: "0.9rem", color: "var(--text-secondary)", marginRight: "8px" }}>نظام إدارة التوزيع</span>
             </div>
           </div>
 
