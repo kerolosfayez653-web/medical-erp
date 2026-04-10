@@ -105,7 +105,7 @@ export default function PeoplePage() {
         </strong>
       </p>
 
-      <div className="responsive-grid" style={{ "--grid-cols-desktop": "350px 1fr" } as any}>
+      <div className="split-layout">
         {/* Add Form */}
         <div className="glass-panel" style={{ height: 'fit-content' }}>
           <h3 style={{ marginBottom: '1rem' }}>إضافة جهة جديدة</h3>
