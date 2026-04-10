@@ -300,6 +300,53 @@ a { text-decoration: none; color: inherit; }
   padding: 8px !important;
 }
 
+.glass-panel:hover {
+  transform: translateY(-2px);
+  border-color: rgba(96, 165, 250, 0.3);
+}
+
+/* Universal Responsive Utilities */
+.responsive-grid {
+  display: grid !important;
+  grid-template-columns: var(--grid-cols-desktop, repeat(auto-fit, minmax(300px, 1fr))) !important;
+  gap: 2rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .responsive-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1.5rem;
+  }
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 500px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+}
+
+.table-responsive table {
+  min-width: 600px; /* Force internal scroll if needed */
+  width: 100%;
+}
+
 .clickable-row:hover {
   background: rgba(255, 255, 255, 0.05) !important;
   transform: translateX(-4px);

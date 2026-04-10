@@ -155,7 +155,7 @@ export default function InventoryPage() {
 
       {/* ===== TAB: INVENTORY TABLE ===== */}
       {activeTab === 'table' && (
-        <div className="glass-panel" style={{ overflowX: 'auto' }}>
+        <div className="glass-panel" style={{ padding: '20px', minWidth: 0 }}>
           {/* Filters */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
@@ -183,89 +183,91 @@ export default function InventoryPage() {
             </div>
           </div>
 
-          {loading ? (
-            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>⏳ جاري تحميل بيانات المخزون...</p>
-          ) : filtered.length === 0 ? (
-            <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>
-              لا توجد نتائج. اذهب إلى <a href="/import" style={{ color: 'var(--accent-color)' }}>الاستيراد</a> لتحميل البيانات.
-            </p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
-              <thead>
-                <tr style={{ background: 'rgba(59,130,246,0.15)', textAlign: 'center' }}>
-                  <th style={th}>الكود</th>
-                  <th style={{ ...th, textAlign: 'right', minWidth: '220px' }}>اسم الصنف</th>
-                  <th style={th}>رصيد أول المدة</th>
-                  <th style={th}>متوسط أول المدة</th>
-                  <th style={th}>الوارد (مشتريات)</th>
-                  <th style={th}>تكلفة المشتريات</th>
-                  <th style={th}>المنصرف (مبيعات)</th>
-                  <th style={th}>الرصيد الحالي</th>
-                  <th style={{ ...th, background: 'rgba(59,130,246,0.25)' }}>المتوسط المرجح ✦</th>
-                  <th style={th}>متوسط البيع</th>
-                  <th style={th}>قيمة المخزون</th>
-                  <th style={th}>إيراد المبيعات</th>
-                  <th style={th}>COGS</th>
-                  <th style={th}>الربح الإجمالي</th>
-                  <th style={th}>الإجراءات</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((p) => {
-                  const isNeg = p.currentQty < 0;
-                  const isZero = p.currentQty === 0;
-                  const profitColor = p.grossProfit > 0 ? 'var(--success-color)' : p.grossProfit < 0 ? 'var(--danger-color)' : 'var(--text-secondary)';
-                  return (
-                    <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', textAlign: 'center' }}>
-                      <td style={td}><span style={{ color: 'var(--accent-color)', fontSize: '0.8rem' }}>{p.barcode}</span></td>
-                      <td style={{ ...td, textAlign: 'right', fontWeight: 'bold', whiteSpace: 'normal' }}>{p.name}</td>
-                      <td style={td}>{p.openingQty > 0 ? fmt0(p.openingQty) : <span style={{ color: 'var(--text-secondary)' }}>-</span>}</td>
-                      <td style={td}>{p.openingWeightedAvg > 0 ? p.openingWeightedAvg.toFixed(3) : <span style={{ color: 'var(--text-secondary)' }}>-</span>}</td>
-                      <td style={{ ...td, color: 'var(--success-color)' }}>{p.purchasedQty > 0 ? `+${fmt0(p.purchasedQty)}` : '-'}</td>
-                      <td style={td}>{p.purchasedValue > 0 ? fmt(p.purchasedValue) : '-'}</td>
-                      <td style={{ ...td, color: 'var(--danger-color)' }}>{p.soldQty > 0 ? `-${fmt0(p.soldQty)}` : '-'}</td>
-                      <td style={{ ...td, fontWeight: 'bold', fontSize: '1rem', color: isNeg ? 'var(--danger-color)' : isZero ? '#f59e0b' : 'var(--text-primary)' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                           <span>{p.currentQty} <small style={{ fontWeight: 'normal' }}>{p.secondaryUnit || 'وحدة'}</small></span>
-                           {p.conversionFactor > 1 && (
-                              <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)' }}>
-                                 {Math.floor(p.currentQty / p.conversionFactor)} {p.unit} ({p.currentQty % p.conversionFactor} {p.secondaryUnit})
-                              </span>
-                           )}
-                        </div>
-                        {isNeg && <span style={{ fontSize: '0.7rem', display: 'block' }}>⚠️ سالب</span>}
-                      </td>
-                      <td style={{ ...td, background: 'rgba(59,130,246,0.08)', fontWeight: 'bold', color: 'var(--accent-color)' }}>
-                        {p.weightedAvgCost > 0 ? (p.weightedAvgCost * (p.conversionFactor || 1)).toFixed(2) : '-'}
-                      </td>
-                      <td style={td}>
-                        {p.avgSellPrice > 0 ? fmt(p.avgSellPrice * (p.conversionFactor || 1)) : '-'}
-                      </td>
-                      <td style={{ ...td, fontWeight: 'bold' }}>{p.inventoryValue !== 0 ? fmt(p.inventoryValue) : '-'}</td>
-                      <td style={{ ...td, color: 'var(--success-color)' }}>{p.salesRevenue > 0 ? fmt(p.salesRevenue) : '-'}</td>
-                      <td style={td}>{p.cogs > 0 ? fmt(p.cogs) : '-'}</td>
-                      <td style={{ ...td, fontWeight: 'bold', color: profitColor }}>
-                        {p.soldQty > 0 ? fmt(p.grossProfit) : '-'}
-                      </td>
-                      <td style={td}>
-                        <button onClick={() => setEditingProduct(p)} style={{ padding: '6px 12px', background: 'var(--accent-color)', border: 'none', borderRadius: '4px', color: '#fff', cursor: 'pointer' }}>✏️ تعديل</button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-              {/* Footer totals for filtered set */}
-              <tfoot>
-                <tr style={{ background: 'rgba(59,130,246,0.2)', fontWeight: 'bold', textAlign: 'center', borderTop: '2px solid var(--border-color)' }}>
-                  <td colSpan={9} style={{ ...td, textAlign: 'right' }}>إجمالي النتائج ({filtered.length} صنف)</td>
-                  <td style={td}>{fmt(filtered.reduce((s, p) => s + p.inventoryValue, 0))}</td>
-                  <td style={{ ...td, color: 'var(--success-color)' }}>{fmt(filtered.reduce((s, p) => s + p.salesRevenue, 0))}</td>
-                  <td style={td}>{fmt(filtered.reduce((s, p) => s + p.cogs, 0))}</td>
-                  <td style={{ ...td, color: 'var(--success-color)' }}>{fmt(filtered.reduce((s, p) => s + p.grossProfit, 0))}</td>
-                </tr>
-              </tfoot>
-            </table>
-          )}
+          <div className="table-responsive">
+            {loading ? (
+              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>⏳ جاري تحميل بيانات المخزون...</p>
+            ) : filtered.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', padding: '2rem' }}>
+                لا توجد نتائج. اذهب إلى <a href="/import" style={{ color: 'var(--accent-color)' }}>الاستيراد</a> لتحميل البيانات.
+              </p>
+            ) : (
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                <thead>
+                  <tr style={{ background: 'rgba(59,130,246,0.15)', textAlign: 'center' }}>
+                    <th style={th}>الكود</th>
+                    <th style={{ ...th, textAlign: 'right', minWidth: '220px' }}>اسم الصنف</th>
+                    <th style={th}>رصيد أول المدة</th>
+                    <th style={th}>متوسط أول المدة</th>
+                    <th style={th}>الوارد (مشتريات)</th>
+                    <th style={th}>تكلفة المشتريات</th>
+                    <th style={th}>المنصرف (مبيعات)</th>
+                    <th style={th}>الرصيد الحالي</th>
+                    <th style={{ ...th, background: 'rgba(59,130,246,0.25)' }}>المتوسط المرجح ✦</th>
+                    <th style={th}>متوسط البيع</th>
+                    <th style={th}>قيمة المخزون</th>
+                    <th style={th}>إيراد المبيعات</th>
+                    <th style={th}>COGS</th>
+                    <th style={th}>الربح الإجمالي</th>
+                    <th style={th}>الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((p) => {
+                    const isNeg = p.currentQty < 0;
+                    const isZero = p.currentQty === 0;
+                    const profitColor = p.grossProfit > 0 ? 'var(--success-color)' : p.grossProfit < 0 ? 'var(--danger-color)' : 'var(--text-secondary)';
+                    return (
+                      <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', textAlign: 'center' }}>
+                        <td style={td}><span style={{ color: 'var(--accent-color)', fontSize: '0.8rem' }}>{p.barcode}</span></td>
+                        <td style={{ ...td, textAlign: 'right', fontWeight: 'bold', whiteSpace: 'normal' }}>{p.name}</td>
+                        <td style={td}>{p.openingQty > 0 ? fmt0(p.openingQty) : <span style={{ color: 'var(--text-secondary)' }}>-</span>}</td>
+                        <td style={td}>{p.openingWeightedAvg > 0 ? p.openingWeightedAvg.toFixed(3) : <span style={{ color: 'var(--text-secondary)' }}>-</span>}</td>
+                        <td style={{ ...td, color: 'var(--success-color)' }}>{p.purchasedQty > 0 ? `+${fmt0(p.purchasedQty)}` : '-'}</td>
+                        <td style={td}>{p.purchasedValue > 0 ? fmt(p.purchasedValue) : '-'}</td>
+                        <td style={{ ...td, color: 'var(--danger-color)' }}>{p.soldQty > 0 ? `-${fmt0(p.soldQty)}` : '-'}</td>
+                        <td style={{ ...td, fontWeight: 'bold', fontSize: '1rem', color: isNeg ? 'var(--danger-color)' : isZero ? '#f59e0b' : 'var(--text-primary)' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                             <span>{p.currentQty} <small style={{ fontWeight: 'normal' }}>{p.secondaryUnit || 'وحدة'}</small></span>
+                             {p.conversionFactor > 1 && (
+                                <span style={{ fontSize: '0.75rem', color: 'var(--accent-color)' }}>
+                                   {Math.floor(p.currentQty / p.conversionFactor)} {p.unit} ({p.currentQty % p.conversionFactor} {p.secondaryUnit})
+                                </span>
+                             )}
+                          </div>
+                          {isNeg && <span style={{ fontSize: '0.7rem', display: 'block' }}>⚠️ سالب</span>}
+                        </td>
+                        <td style={{ ...td, background: 'rgba(59,130,246,0.08)', fontWeight: 'bold', color: 'var(--accent-color)' }}>
+                          {p.weightedAvgCost > 0 ? (p.weightedAvgCost * (p.conversionFactor || 1)).toFixed(2) : '-'}
+                        </td>
+                        <td style={td}>
+                          {p.avgSellPrice > 0 ? fmt(p.avgSellPrice * (p.conversionFactor || 1)) : '-'}
+                        </td>
+                        <td style={{ ...td, fontWeight: 'bold' }}>{p.inventoryValue !== 0 ? fmt(p.inventoryValue) : '-'}</td>
+                        <td style={{ ...td, color: 'var(--success-color)' }}>{p.salesRevenue > 0 ? fmt(p.salesRevenue) : '-'}</td>
+                        <td style={td}>{p.cogs > 0 ? fmt(p.cogs) : '-'}</td>
+                        <td style={{ ...td, fontWeight: 'bold', color: profitColor }}>
+                          {p.soldQty > 0 ? fmt(p.grossProfit) : '-'}
+                        </td>
+                        <td style={td}>
+                          <button onClick={() => setEditingProduct(p)} style={{ padding: '6px 12px', background: 'var(--accent-color)', border: 'none', borderRadius: '4px', color: '#fff', cursor: 'pointer' }}>✏️ تعديل</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+                <tfoot>
+                  <tr style={{ background: 'rgba(59,130,246,0.2)', fontWeight: 'bold', textAlign: 'center', borderTop: '2px solid var(--border-color)' }}>
+                    <td colSpan={10} style={{ ...td, textAlign: 'right' }}>إجمالي النتائج ({filtered.length} صنف)</td>
+                    <td style={td}>{fmt(filtered.reduce((s, p) => s + p.inventoryValue, 0))}</td>
+                    <td style={{ ...td, color: 'var(--success-color)' }}>{fmt(filtered.reduce((s, p) => s + p.salesRevenue, 0))}</td>
+                    <td style={td}>{fmt(filtered.reduce((s, p) => s + p.cogs, 0))}</td>
+                    <td style={{ ...td, color: 'var(--success-color)' }}>{fmt(filtered.reduce((s, p) => s + p.grossProfit, 0))}</td>
+                    <td style={td}></td>
+                  </tr>
+                </tfoot>
+              </table>
+            )}
+          </div>
         </div>
       )}
 

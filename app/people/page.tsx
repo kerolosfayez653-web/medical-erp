@@ -105,7 +105,7 @@ export default function PeoplePage() {
         </strong>
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(300px, 1fr) 2fr', gap: '2rem' }}>
+      <div className="responsive-grid" style={{ "--grid-cols-desktop": "350px 1fr" } as any}>
         {/* Add Form */}
         <div className="glass-panel" style={{ height: 'fit-content' }}>
           <h3 style={{ marginBottom: '1rem' }}>إضافة جهة جديدة</h3>
@@ -165,8 +165,9 @@ export default function PeoplePage() {
           </form>
         </div>
 
-        {/* Table */}
-        <div className="glass-panel" style={{ overflowX: 'auto' }}>
+        {/* Table Area */}
+        <div className="glass-panel" style={{ padding: '20px', minWidth: 0 }}>
+          <div className="table-responsive">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <h3 style={{ margin: 0 }}>دليل المتعاملين ({filtered.length})</h3>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
@@ -208,12 +209,12 @@ export default function PeoplePage() {
                 </tr>
               </thead>
                <tbody>
-                {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} style={{ padding: '16px', color: 'var(--text-secondary)', textAlign: 'center' }}>
-                      لا توجد نتائج مطابقة.
-                    </td>
-                  </tr>
+                  {filtered.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} style={{ padding: '16px', color: 'var(--text-secondary)', textAlign: 'center' }}>
+                        لا توجد نتائج مطابقة.
+                      </td>
+                    </tr>
                 ) : (
                   filtered.map((p) => (
                     <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
@@ -259,7 +260,7 @@ export default function PeoplePage() {
                 )}
               </tbody>
             </table>
-          )}
+          </div>
         </div>
        </div>
 

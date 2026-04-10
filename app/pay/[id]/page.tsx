@@ -130,7 +130,7 @@ export default function PaymentSummaryPage() {
             onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
             onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            💳 سداد عبر إنستا باي (kerolos)
+            💳 سداد عبر إنستا باي (InstaPay)
           </button>
         ) : (
           <div style={{ padding: '1.5rem', background: '#ecfdf5', borderRadius: '16px', border: '1px solid #10b981', textAlign: 'center', color: '#065f46' }}>
