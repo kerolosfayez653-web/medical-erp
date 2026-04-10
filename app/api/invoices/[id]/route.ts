@@ -27,8 +27,8 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
   const invoiceId = parseInt(id);
   
   try {
-    const body = await request.json();
-    const { items, personId, discount, deliveryFee, paidAmount, reason } = body;
+    const body = await _request.json();
+    const { items, personId, date, type, discount, deliveryFee, paidAmount, reason } = body;
 
     const oldInvoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
@@ -53,7 +53,6 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
       // 1.2 Reverse Inventory
       for (const item of oldInvoice.items) {
         if (oldInvoice.type === 'SALES' || oldInvoice.type === 'SALES_RETURN') {
-          // Put back sold items to the first available lot
           const firstLot = await tx.inventoryLot.findFirst({
             where: { productId: item.productId },
             orderBy: { id: 'asc' }
@@ -65,9 +64,6 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
             });
           }
         } else if (oldInvoice.type === 'PURCHASES' || oldInvoice.type === 'PURCHASES_RETURN') {
-          // Find the lot created by this purchase and remove it (or decrease)
-          // Since we don't have lotId in InvoiceItem yet, we match by product and batch if possible
-          // For now, let's just find the most recent lot for this product
           const lot = await tx.inventoryLot.findFirst({
             where: { productId: item.productId, quantity: { gte: item.quantity } },
             orderBy: { id: 'desc' }
@@ -87,32 +83,33 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
       // 3. CALCULATE NEW TOTALS
       let newItemsTotal = 0;
       for (const item of items) {
-        // Price is already per selected unit from UI
-        newItemsTotal += parseFloat(item.price) * parseFloat(item.quantity);
+        newItemsTotal += (parseFloat(item.price) || 0) * (parseFloat(item.quantity) || 0);
       }
-      const newTotal = newItemsTotal + (parseFloat(deliveryFee) || 0) - (parseFloat(discount) || 0);
-      const newRemaining = newTotal - (parseFloat(paidAmount) || 0);
+      const newTotal = newItemsTotal;
+      const netAmount = newTotal + (parseFloat(deliveryFee) || 0) - (parseFloat(discount) || 0);
+      const newRemaining = netAmount - (parseFloat(paidAmount) || 0);
 
       // 4. APPLY NEW EFFECTS
       // 4.1 Update Balance
-      const newPersonId = personId ? parseInt(personId) : oldInvoice.personId;
-      if (newPersonId && newRemaining !== 0) {
+      const targetPersonId = personId ? parseInt(personId) : oldInvoice.personId;
+      if (targetPersonId && newRemaining !== 0) {
         await tx.person.update({
-          where: { id: newPersonId },
+          where: { id: targetPersonId },
           data: { currentBalance: { increment: newRemaining } }
         });
       }
 
-      // 4.2 Update Inventory (Similar to create logic)
+      // 4.2 Update Inventory
+      const activeType = type || oldInvoice.type;
       for (const item of items) {
         const productId = parseInt(item.productId);
         const product = await tx.product.findUnique({ where: { id: productId } });
         if (!product) continue;
 
         const factor = product.conversionFactor || 1;
-        const effectiveQty = item.unitType === 'SECONDARY' ? parseInt(item.quantity) : (parseInt(item.quantity) * factor);
+        const effectiveQty = item.unitType === 'SECONDARY' ? parseFloat(item.quantity) : (parseFloat(item.quantity) * factor);
         
-        if (oldInvoice.type === 'SALES') {
+        if (activeType === 'SALES') {
            let qtyNeeded = effectiveQty;
            const lots = await tx.inventoryLot.findMany({
              where: { productId, quantity: { gt: 0 } },
@@ -127,7 +124,7 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
              });
              qtyNeeded -= deduction;
            }
-        } else if (oldInvoice.type === 'PURCHASES') {
+        } else if (activeType === 'PURCHASES') {
           await tx.inventoryLot.create({
             data: {
               productId,
@@ -145,23 +142,26 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
       const updatedInvoice = await tx.invoice.update({
         where: { id: invoiceId },
         data: {
-          personId: newPersonId,
+          personId: targetPersonId,
+          date: date ? new Date(date) : oldInvoice.date,
+          type: activeType,
           totalAmount: newTotal,
+          netAmount: netAmount,
           paidAmount: parseFloat(paidAmount) || 0,
-          paymentStatus: paidAmount >= newTotal ? 'CASH' : 'CREDIT',
+          paymentStatus: paidAmount >= netAmount ? 'CASH' : 'CREDIT',
           discount: parseFloat(discount) || 0,
           deliveryFee: parseFloat(deliveryFee) || 0,
           items: {
             create: await Promise.all(items.map(async (i: any) => {
               const product = await tx.product.findUnique({ where: { id: parseInt(i.productId) } });
               const factor = product?.conversionFactor || 1;
-              const effectiveQty = i.unitType === 'SECONDARY' ? parseInt(i.quantity) : (parseInt(i.quantity) * factor);
+              const effectiveQty = i.unitType === 'SECONDARY' ? parseFloat(i.quantity) : (parseFloat(i.quantity) * factor);
               return {
                 productId: parseInt(i.productId),
                 quantity: effectiveQty,
                 unitType: i.unitType || 'PRIMARY',
-                price: parseFloat(i.price),
-                total: parseFloat(i.price) * parseInt(i.quantity)
+                price: parseFloat(i.price) || 0,
+                total: (parseFloat(i.price) || 0) * (parseFloat(i.quantity) || 0)
               };
             }))
           }
@@ -173,10 +173,10 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
       await tx.invoiceLog.create({
         data: {
           invoiceId,
-          action: 'EDIT',
+          action: 'EDIT_FULL',
           oldData: JSON.stringify(oldInvoice),
           newData: JSON.stringify(updatedInvoice),
-          reason: reason || 'تعديل يدوي'
+          reason: reason || 'تعديل شامل للفاتورة'
         }
       });
 

@@ -23,6 +23,9 @@ export default function InvoicesHistoryPage() {
   const [viewingHistory, setViewingHistory] = useState<any | null>(null);
   const [editReason, setEditReason] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [products, setProducts] = useState<any[]>([]);
+  const [addingItemSearch, setAddingItemSearch] = useState('');
+  const [searchResults, setSearchResults] = useState<any[]>([]);
 
   // Payment states
   const [recordingPayment, setRecordingPayment] = useState<any | null>(null);
@@ -35,6 +38,10 @@ export default function InvoicesHistoryPage() {
     fetch('/api/people')
       .then(r => r.json())
       .then(d => { if (d.success) setPeople(d.data); });
+      
+    fetch('/api/products')
+      .then(r => r.json())
+      .then(d => { if (d.success) setProducts(d.data); });
   }, []);
 
   const fetchInvoices = () => {
@@ -356,27 +363,212 @@ export default function InvoicesHistoryPage() {
           </div>
        )}
 
-       {editingInvoice && (
-          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-             <div className="glass-panel" style={{ width: '100%', maxWidth: '900px', maxHeight: '95vh', overflowY: 'auto' }}>
-                <h2>تعديل فاتورة: {editingInvoice.invoiceNumber}</h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
-                   <div className="input-group"><label>الخصم</label><input type="number" className="input-field" value={editingInvoice.discount} onChange={e => setEditingInvoice({...editingInvoice, discount: e.target.value})} /></div>
-                   <div className="input-group"><label>التوصيل</label><input type="number" className="input-field" value={editingInvoice.deliveryFee} onChange={e => setEditingInvoice({...editingInvoice, deliveryFee: e.target.value})} /></div>
-                   <div className="input-group"><label>المدفوع</label><input type="number" className="input-field" value={editingInvoice.paidAmount} onChange={e => setEditingInvoice({...editingInvoice, paidAmount: e.target.value})} /></div>
+        {editingInvoice && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '10px' }}>
+             <div className="glass-panel" style={{ width: '100%', maxWidth: '1000px', maxHeight: '95vh', overflowY: 'auto', padding: '2rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+                   <h2 style={{ margin: 0 }}>تعديل شامل للفاتورة: {editingInvoice.invoiceNumber}</h2>
+                   <button onClick={() => setEditingInvoice(null)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
                 </div>
-                <div className="input-group"><label>سبب التعديل</label><textarea className="input-field" value={editReason} onChange={e => setEditReason(e.target.value)} /></div>
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                   <button className="btn btn-primary" onClick={async () => {
-                      setSubmitting(true);
-                      await fetch(`/api/invoices/${editingInvoice.id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ items: editingInvoice.items, discount: editingInvoice.discount, deliveryFee: editingInvoice.deliveryFee, paidAmount: editingInvoice.paidAmount, reason: editReason }) });
-                      setEditingInvoice(null); fetchInvoices(); setSubmitting(false);
-                   }}>حفظ</button>
-                   <button className="btn" onClick={() => setEditingInvoice(null)}>إلغاء</button>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
+                   <div className="input-group">
+                      <label>العميل/المورد</label>
+                      <select className="input-field" value={editingInvoice.personId} onChange={e => setEditingInvoice({...editingInvoice, personId: parseInt(e.target.value)})}>
+                         {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                   </div>
+                   <div className="input-group">
+                      <label>التاريخ</label>
+                      <input type="date" className="input-field" value={new Date(editingInvoice.date).toISOString().split('T')[0]} onChange={e => setEditingInvoice({...editingInvoice, date: e.target.value})} />
+                   </div>
+                   <div className="input-group">
+                      <label>نوع الفاتورة</label>
+                      <select className="input-field" value={editingInvoice.type} onChange={e => setEditingInvoice({...editingInvoice, type: e.target.value})}>
+                         <option value="SALES">مبيعات</option>
+                         <option value="PURCHASES">مشتريات</option>
+                      </select>
+                   </div>
+                </div>
+
+                <div style={{ marginBottom: '1.5rem' }}>
+                   <label style={{ fontWeight: 'bold', display: 'block', marginBottom: '10px' }}>الأصناف والكميات:</label>
+                   <div className="glass-panel" style={{ padding: '0', overflowX: 'auto', background: 'rgba(255,255,255,0.02)' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                         <thead>
+                            <tr style={{ background: 'rgba(255,255,255,0.05)', borderBottom: '1px solid var(--border-color)' }}>
+                               <th style={{ padding: '12px' }}>الصنف</th>
+                               <th style={{ padding: '12px' }}>الكمية</th>
+                               <th style={{ padding: '12px' }}>الوحدة</th>
+                               <th style={{ padding: '12px' }}>السعر</th>
+                               <th style={{ padding: '12px' }}>الإجمالي</th>
+                               <th style={{ padding: '12px' }}>-</th>
+                            </tr>
+                         </thead>
+                         <tbody>
+                            {editingInvoice.items?.map((item: any, idx: number) => (
+                               <tr key={idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)' }}>
+                                  <td style={{ padding: '8px' }}>{item.product?.name || "صنف غير معرف"}</td>
+                                  <td style={{ padding: '8px' }}>
+                                     <input 
+                                        type="number" 
+                                        className="input-field" 
+                                        style={{ width: '80px', padding: '4px 8px' }} 
+                                        value={item.quantity} 
+                                        onChange={e => {
+                                           const newItems = [...editingInvoice.items];
+                                           newItems[idx].quantity = parseFloat(e.target.value);
+                                           newItems[idx].total = newItems[idx].quantity * newItems[idx].price;
+                                           setEditingInvoice({...editingInvoice, items: newItems});
+                                        }}
+                                     />
+                                  </td>
+                                  <td style={{ padding: '8px' }}>
+                                     <select 
+                                        className="input-field" 
+                                        style={{ padding: '4px 8px' }} 
+                                        value={item.unitType}
+                                        onChange={e => {
+                                           const newItems = [...editingInvoice.items];
+                                           newItems[idx].unitType = e.target.value;
+                                           setEditingInvoice({...editingInvoice, items: newItems});
+                                        }}
+                                     >
+                                        <option value="PRIMARY">{item.product?.unit || 'وحدة'}</option>
+                                        <option value="SECONDARY">{item.product?.secondaryUnit || 'قطعة'}</option>
+                                     </select>
+                                  </td>
+                                  <td style={{ padding: '8px' }}>
+                                     <input 
+                                        type="number" 
+                                        className="input-field" 
+                                        style={{ width: '100px', padding: '4px 8px' }} 
+                                        value={item.price}
+                                        onChange={e => {
+                                           const newItems = [...editingInvoice.items];
+                                           newItems[idx].price = parseFloat(e.target.value);
+                                           newItems[idx].total = newItems[idx].quantity * newItems[idx].price;
+                                           setEditingInvoice({...editingInvoice, items: newItems});
+                                        }}
+                                     />
+                                  </td>
+                                  <td style={{ padding: '8px', fontWeight: 'bold' }}>{safeFmt(item.total)}</td>
+                                  <td style={{ padding: '8px' }}>
+                                     <button 
+                                        className="btn" 
+                                        style={{ padding: '4px 8px', background: 'var(--danger-color)', color: '#fff' }}
+                                        onClick={() => {
+                                           const newItems = editingInvoice.items.filter((_: any, i: number) => i !== idx);
+                                           setEditingInvoice({...editingInvoice, items: newItems});
+                                        }}
+                                     >×</button>
+                                  </td>
+                               </tr>
+                            ))}
+                         </tbody>
+                      </table>
+                      <div style={{ padding: '15px', borderTop: '1px solid var(--border-color)' }}>
+                         <div style={{ display: 'flex', gap: '10px' }}>
+                            <input 
+                               type="text" 
+                               className="input-field" 
+                               placeholder="🔍 إضافة صنف جديد للفاتورة..." 
+                               style={{ flex: 1 }}
+                               value={addingItemSearch}
+                               onChange={e => {
+                                  setAddingItemSearch(e.target.value);
+                                  if (e.target.value.length > 1) {
+                                     const results = products.filter(p => p.name.includes(e.target.value)).slice(0, 5);
+                                     setSearchResults(results);
+                                  } else {
+                                     setSearchResults([]);
+                                  }
+                               }}
+                            />
+                         </div>
+                         {searchResults.length > 0 && (
+                            <div className="glass-panel" style={{ marginTop: '5px', padding: '10px', position: 'absolute', zIndex: 100, width: '400px' }}>
+                               {searchResults.map(p => (
+                                  <div 
+                                     key={p.id} 
+                                     className="clickable-row" 
+                                     style={{ padding: '8px', borderBottom: '1px solid var(--border-color)' }}
+                                     onClick={() => {
+                                        const newItem = {
+                                           productId: p.id,
+                                           product: p,
+                                           quantity: 1,
+                                           unitType: 'PRIMARY',
+                                           price: p.defaultSellingPrice || 0,
+                                           total: p.defaultSellingPrice || 0
+                                        };
+                                        setEditingInvoice({...editingInvoice, items: [...(editingInvoice.items || []), newItem]});
+                                        setAddingItemSearch('');
+                                        setSearchResults([]);
+                                     }}
+                                  >
+                                     {p.name} - <small style={{ opacity: 0.7 }}>{p.code}</small>
+                                  </div>
+                               ))}
+                            </div>
+                         )}
+                      </div>
+                   </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1.5rem', background: 'rgba(255,255,255,0.03)', padding: '1.5rem', borderRadius: '16px', marginBottom: '1.5rem' }}>
+                   <div className="input-group"><label>الخصم الكلي</label><input type="number" className="input-field" value={editingInvoice.discount} onChange={e => setEditingInvoice({...editingInvoice, discount: parseFloat(e.target.value)})} /></div>
+                   <div className="input-group"><label>رسوم التوصيل</label><input type="number" className="input-field" value={editingInvoice.deliveryFee} onChange={e => setEditingInvoice({...editingInvoice, deliveryFee: parseFloat(e.target.value)})} /></div>
+                   <div className="input-group">
+                      <label>إجمالي الفاتورة</label>
+                      <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--accent-color)' }}>
+                         {safeFmt((editingInvoice.items?.reduce((s: number, i: any) => s + (i.total || 0), 0) || 0) + (parseFloat(editingInvoice.deliveryFee) || 0) - (parseFloat(editingInvoice.discount) || 0))} ج.م
+                      </div>
+                   </div>
+                   <div className="input-group">
+                      <label>المبلغ المسدد حالياً</label>
+                      <input type="number" className="input-field" value={editingInvoice.paidAmount} onChange={e => setEditingInvoice({...editingInvoice, paidAmount: parseFloat(e.target.value)})} />
+                   </div>
+                </div>
+
+                <div className="input-group"><label>سبب التعديل (سيظهر في السجل)</label><textarea className="input-field" value={editReason} onChange={e => setEditReason(e.target.value)} /></div>
+                
+                <div style={{ display: 'flex', gap: '1rem', marginTop: '2rem' }}>
+                   <button 
+                      className="btn btn-primary" 
+                      style={{ flex: 1, padding: '1rem' }}
+                      disabled={submitting}
+                      onClick={async () => {
+                         setSubmitting(true);
+                         const res = await fetch(`/api/invoices/${editingInvoice.id}`, { 
+                            method: 'PATCH', 
+                            headers: { 'Content-Type': 'application/json' }, 
+                            body: JSON.stringify({ 
+                               items: editingInvoice.items, 
+                               discount: editingInvoice.discount, 
+                               deliveryFee: editingInvoice.deliveryFee, 
+                               paidAmount: editingInvoice.paidAmount, 
+                               personId: editingInvoice.personId,
+                               date: editingInvoice.date,
+                               type: editingInvoice.type,
+                               reason: editReason 
+                            }) 
+                         });
+                         const data = await res.json();
+                         if (data.success) {
+                            setEditingInvoice(null); 
+                            fetchInvoices();
+                         } else {
+                            alert('خطأ أثناء التعديل: ' + data.error);
+                         }
+                         setSubmitting(false);
+                      }}
+                   >{submitting ? 'جاري الحفظ...' : '📦 حفظ التعديلات الشاملة'}</button>
+                   <button className="btn" style={{ padding: '12px 32px' }} onClick={() => setEditingInvoice(null)}>إلغاء</button>
                 </div>
              </div>
           </div>
-       )}
+        )}
 
        {recordingPayment && (
           <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>

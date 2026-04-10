@@ -31,7 +31,9 @@ body {
   background-color: var(--bg-primary);
   color: var(--text-primary);
   min-height: 100vh;
-  direction: rtl; /* اتجاه الكتابة من اليمين لليسار */
+  direction: rtl; 
+  overflow-x: hidden;
+  width: 100vw;
 }
 
 /* Glassmorphism Classes */
@@ -136,6 +138,8 @@ p { color: var(--text-secondary); line-height: 1.6; }
   background: var(--bg-secondary);
   border-left: 1px solid var(--border-color);
   padding: 32px 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 16px;
@@ -161,29 +165,41 @@ main {
 /* Mobile Specifics */
 @media (max-width: 768px) {
   .sidebar {
+    width: 280px;
     position: fixed;
     right: 0;
     top: 0;
     height: 100vh;
     transform: translateX(100%);
     box-shadow: -10px 0 30px rgba(0,0,0,0.5);
+    z-index: 200;
   }
-
   .sidebar.open {
     transform: translateX(0);
   }
 
+  main {
+    width: 100vw;
+    overflow-x: hidden;
+  }
+
   .main-content {
     padding: 16px;
+    width: 100%;
   }
 
   .glass-header {
     padding: 16px;
+    width: 100%;
   }
 
   .stats-grid {
     grid-template-columns: 1fr;
-    gap: 16px;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px;
   }
 }
 

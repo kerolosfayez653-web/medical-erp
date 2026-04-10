@@ -7,7 +7,6 @@ export default function PrintInvoicePage() {
   const id = Array.isArray(params?.id) ? params.id[0] : params?.id;
   const [invoice, setInvoice] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [showQRModal, setShowQRModal] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -83,24 +82,6 @@ export default function PrintInvoicePage() {
           .details-grid { grid-template-columns: 1fr !important; gap: 10px !important; }
           .invoice-header { flex-direction: column; text-align: center; gap: 15px; }
           .invoice-meta { width: 100%; }
-        }
-
-        .qr-modal-overlay {
-          position: fixed;
-          inset: 0;
-          background: rgba(0,0,0,0.9);
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          justify-content: center;
-          z-index: 1000;
-          padding: 20px;
-          animation: modalFadeIn 0.3s ease;
-        }
-
-        @keyframes modalFadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
         }
       `}</style>
 
@@ -184,7 +165,10 @@ export default function PrintInvoicePage() {
           {(invoice.netAmount - invoice.paidAmount > 0) && (
             <div style={{ textAlign: 'center' }}>
               <button 
-                onClick={() => setShowQRModal(true)}
+                onClick={() => {
+                  const url = `${(typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL) || 'https://medical-erp-sable.vercel.app'}/pay/${invoice.id}`;
+                  window.location.href = url;
+                }}
                 style={{ 
                   background: 'none', 
                   border: 'none', 
@@ -243,26 +227,6 @@ export default function PrintInvoicePage() {
         <div style={{ fontSize: '10px' }}>تاريخ الطباعة: {new Date().toLocaleString('ar-EG')}</div>
         <div style={{ fontWeight: 'bold' }}>البضاعة المباعة لا ترد ولا تستبدل بعد 14 يوماً</div>
       </div>
-
-      {/* QR Enlarged Modal */}
-      {showQRModal && (
-        <div className="qr-modal-overlay no-print" onClick={() => setShowQRModal(false)}>
-          <div style={{ background: '#fff', padding: '20px', borderRadius: '24px', textAlign: 'center', boxShadow: '0 20px 50px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
-            <h3 style={{ color: '#7c3aed', marginBottom: '15px' }}>مسح كود الدفع</h3>
-            <img 
-              src={`https://api.qrserver.com/v1/create-qr-code/?size=400x400&data=${encodeURIComponent(`${(typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL) || 'https://medical-erp-sable.vercel.app'}/pay/${invoice.id}`)}`} 
-              alt="Payment QR Large" 
-              style={{ width: '300px', height: '300px', borderRadius: '12px' }}
-            />
-            <button 
-              onClick={() => setShowQRModal(false)}
-              style={{ marginTop: '20px', width: '100%', padding: '12px', background: '#f3f4f6', border: 'none', borderRadius: '12px', fontWeight: 'bold', cursor: 'pointer' }}
-            >
-              إغلاق
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
