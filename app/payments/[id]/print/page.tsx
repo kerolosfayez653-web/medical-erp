@@ -29,7 +29,7 @@ export default function PrintPaymentPage() {
     <div className="print-container" style={{ 
       direction: 'rtl', 
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '40px',
+      padding: '10px',
       maxWidth: '100%',
       margin: '0 auto',
       background: '#fff',
@@ -45,8 +45,8 @@ export default function PrintPaymentPage() {
           body { background: white !important; margin: 0 !important; padding: 0 !important; }
           .no-print { display: none !important; }
           .print-container { 
-            padding: 10mm !important; 
-            width: 210mm !important; 
+            padding: 0 !important; 
+            width: 100% !important; 
             margin: 0 !important; 
             border: none !important;
           }
@@ -126,8 +126,8 @@ export default function PrintPaymentPage() {
          <button onClick={() => window.close()} style={{ padding: '12px 24px', background: '#fff', color: '#333', border: '1px solid #d1d5db', borderRadius: '12px', cursor: 'pointer' }}>إغلاق</button>
       </div>
 
-      <div className="voucher-box">
-        <div className="header">
+      <div className="voucher-box" style={{ border: '1px solid #7c3aed', padding: '15px' }}>
+        <div className="header" style={{ marginBottom: '15px', paddingBottom: '10px' }}>
           <div className="branding">
             <h1>24MED</h1>
             <p>FOR MEDICAL SUPPLIES</p>
