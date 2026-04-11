@@ -482,6 +482,16 @@ export default function ReportsPage() {
                         <td style={{ fontSize: '0.8rem', opacity: 0.7 }}>{pay.notes}</td>
                       </tr>
                     ))}
+                    {/* Explicit Opening Balance Row at the bottom (Starting point) */}
+                    {totals?.openingCashBalance! > 0 && (
+                      <tr style={{ background: 'rgba(16, 185, 129, 0.05)', borderTop: '2px solid rgba(255,255,255,0.1)' }}>
+                        <td>٠١/٠١/٢٠٢٦</td>
+                        <td style={{ fontWeight: 'bold' }}>رصيد أول المدة</td>
+                        <td style={{ color: 'var(--success-color)' }}>رصيد افتتاحي (نقدية)</td>
+                        <td style={{ fontWeight: 'bold' }}>{fmt(totals?.openingCashBalance!)}</td>
+                        <td style={{ fontSize: '0.8rem', opacity: 0.7 }}>الخزينة الافتتاحية من الإكسيل</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>

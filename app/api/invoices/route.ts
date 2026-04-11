@@ -6,6 +6,33 @@ export const dynamic = 'force-dynamic';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
+    const id            = searchParams.get('id');
+    
+    // Strict Single-ID Lookup (Fixes bug where latest invoice was returned)
+    if (id && id !== 'undefined' && id !== 'null') {
+      const invoice = await prisma.invoice.findUnique({
+        where: { id: parseInt(id) },
+        include: {
+          person: true,
+          items: { include: { product: { select: { name: true, unit: true, secondaryUnit: true, conversionFactor: true } } } },
+          payments: true,
+        }
+      });
+      return NextResponse.json(
+        { 
+          success: true, 
+          data: invoice ? [invoice] : [], 
+          meta: { 
+            requestedId: id, 
+            resolvedId: invoice?.id, 
+            resolvedInvoiceNumber: invoice?.invoiceNumber,
+            timestamp: Date.now() 
+          } 
+        },
+        { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'Pragma': 'no-cache', 'Expires': '0' } }
+      );
+    }
+
     const startDate     = searchParams.get('startDate');
     const endDate       = searchParams.get('endDate');
     const personId      = searchParams.get('personId');
@@ -15,6 +42,7 @@ export async function GET(request: Request) {
     const type          = searchParams.get('type'); // SALES, PURCHASES
 
     const where: any = {};
+    if (id) where.id = parseInt(id);
     if (type && type !== 'ALL') where.type = type;
     if (paymentStatus && paymentStatus !== 'ALL') {
        if (paymentStatus === 'CREDIT') {

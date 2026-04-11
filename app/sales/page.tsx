@@ -144,26 +144,61 @@ export default function SalesPage() {
           {/* Customer selector */}
           <div className="glass-panel">
             <h3 style={{ marginBottom: "1rem" }}>👤 بيانات العميل</h3>
-            <div className="input-group">
-              <label>🔍 بحث عن عميل / اختيار</label>
+            <div className="input-group" style={{ position: 'relative' }}>
+              <label>👤 ابحث عن عميل واختاره</label>
               <input 
                 type="text" 
-                placeholder="ابحث بالاسم أو الهاتف..." 
+                placeholder="اكتب اسم العميل أو رقم الهاتف..." 
                 value={custSearch}
-                onChange={e => setCustSearch(e.target.value)}
+                onChange={e => {
+                  setCustSearch(e.target.value);
+                  if (selectedCustomerId) setSelectedCustomerId(""); // Reset if editing
+                }}
+                onFocus={() => {
+                  if (selectedCustomer) setCustSearch(""); // Clear for new search on focus
+                }}
                 className="input-field"
-                style={{ marginBottom: '10px', fontSize: '0.9rem' }}
+                style={{ fontSize: '1rem', padding: '12px' }}
               />
-              <select
-                value={selectedCustomerId}
-                onChange={e => setSelectedCustomerId(e.target.value)}
-                className="input-field"
-              >
-                <option value="">-- {filteredCustomersList.length === 0 ? "لا يوجد نتائج" : "اختر العميل"} --</option>
-                {filteredCustomersList.map(c => (
-                  <option key={c.id} value={String(c.id)}>{c.name} {c.phone ? `(${c.phone})` : ""}</option>
-                ))}
-              </select>
+              
+              {/* Autocomplete Dropdown */}
+              {custSearch && !selectedCustomerId && (
+                <div style={{ 
+                  position: 'absolute', top: '100%', left: 0, right: 0, 
+                  background: 'rgba(23, 23, 27, 0.98)', backdropFilter: 'blur(10px)',
+                  border: '1px solid var(--accent-color)', borderRadius: '12px',
+                  marginTop: '5px', zIndex: 9999, maxHeight: '200px', overflowY: 'auto',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                }}>
+                  {filteredCustomersList.length === 0 ? (
+                    <div style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>لا توجد نتائج</div>
+                  ) : (
+                    filteredCustomersList.map(c => (
+                      <div 
+                        key={c.id} 
+                        onClick={() => {
+                          setSelectedCustomerId(String(c.id));
+                          setCustSearch(c.name);
+                        }}
+                        style={{ 
+                          padding: '12px', 
+                          borderBottom: '1px solid rgba(255,255,255,0.05)', 
+                          cursor: 'pointer', 
+                          transition: '0.2s',
+                          color: '#fff'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                        onMouseOver={e => e.currentTarget.style.background = 'rgba(16,185,129,0.1)'}
+                        onMouseOut={e => e.currentTarget.style.background = 'transparent'}
+                      >
+                        <div style={{ fontWeight: 'bold' }}>{c.name}</div>
+                        {c.phone && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{c.phone}</div>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Customer Info Card */}

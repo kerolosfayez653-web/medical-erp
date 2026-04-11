@@ -44,20 +44,22 @@ export default function PrintInvoicePage() {
       <style>{`
         @page {
           size: A4 portrait;
-          margin: 0;
+          margin: 0 !important;
         }
         @media print {
-          body { background: white !important; margin: 0; padding: 0; }
-          .no-print { display: none !important; }
+          body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          .no-print, .glass-header, .mobile-overlay, .sidebar-container { display: none !important; }
+          .only-print { display: block !important; }
           .print-container { 
-            padding: 5mm 10mm !important; 
+            padding: 8mm !important; 
             width: 210mm !important; 
-            min-height: 148.5mm !important; 
+            min-height: 297mm !important; 
             max-width: none !important; 
             margin: 0 !important; 
             border: none !important;
           }
         }
+        .only-print { display: none; }
         .invoice-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .branding h1 { margin: 0; color: #7c3aed; font-size: 26px; font-weight: 800; }
         .branding p { margin: 0; color: #db2777; font-size: 14px; font-weight: 600; }
@@ -125,15 +127,22 @@ export default function PrintInvoicePage() {
           </div>
         </div>
         <div className="info-section">
-          <h4>حالة المديونية:</h4>
+          <h4>حالة المديونية والتحصيل:</h4>
           <div className="info-content">
-            {invoice.paymentStatus === 'CREDIT' ? (
-              <div>
-                <div style={{ color: '#dc2626', fontWeight: 'bold', fontSize: '16px' }}>فاتورة آجلة</div>
-                <div style={{ marginTop: '5px' }}>المتبقي مديونية: <span style={{ color: '#dc2626', fontWeight: 'bold' }}>{fmt(invoice.netAmount - invoice.paidAmount)} ج.م</span></div>
-              </div>
-            ) : (
+            {(invoice.netAmount - (invoice.paidAmount || 0)) <= 0.1 ? (
               <div style={{ color: '#059669', fontWeight: 'bold', fontSize: '16px', marginTop: '10px' }}>تم السداد نقداً (خالص) ✅</div>
+            ) : (
+              <div>
+                <div style={{ color: '#dc2626', fontWeight: 'bold', fontSize: '15px' }}>
+                  {invoice.paidAmount > 0 ? 'سداد جزئي (فاتورة مفتوحة)' : 'فاتورة آجلة'}
+                </div>
+                <div style={{ marginTop: '4px', fontSize: '11px', opacity: 0.8 }}>
+                  المحصل: {fmt(invoice.paidAmount)} ج.م
+                </div>
+                <div style={{ marginTop: '2px' }}>
+                  المتبقي: <span style={{ color: '#dc2626', fontWeight: 'bold', fontSize: '14px' }}>{fmt(invoice.netAmount - invoice.paidAmount)} ج.م</span>
+                </div>
+              </div>
             )}
           </div>
         </div>
@@ -164,37 +173,31 @@ export default function PrintInvoicePage() {
         </tbody>
       </table>
 
-      <div className="totals-section">
-        <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '15px' }}>
-          {(invoice.netAmount - invoice.paidAmount > 0) && (
+      <div className="totals-section" style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start' }}>
+        <div style={{ display: 'flex', alignItems: 'center', marginLeft: '50px' }}>
+          {(invoice.netAmount - (invoice.paidAmount || 0) > 0.1) && (
             <div style={{ textAlign: 'center' }}>
-              <button 
-                onClick={() => {
-                  const url = `${(typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL) || 'https://medical-erp-sable.vercel.app'}/pay/${invoice.id}`;
-                  window.location.href = url;
-                }}
-                style={{ 
-                  background: 'none', 
-                  border: 'none', 
-                  padding: 0, 
-                  cursor: 'pointer',
-                  transition: 'transform 0.2s ease',
-                }}
+              <div 
                 className="no-print"
+                onClick={() => {
+                   const origin = (typeof window !== 'undefined' ? window.location.origin : '') || 'https://medical-erp-sable.vercel.app';
+                   window.location.href = `${origin}/pay/${invoice.id}`;
+                }}
+                style={{ cursor: 'pointer', transition: 'transform 0.2s ease' }}
                 onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                 onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
                 <img 
-                  src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${(typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL) || 'https://medical-erp-sable.vercel.app'}/pay/${invoice.id}`)}`} 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://medical-erp-sable.vercel.app/pay/${invoice.id}`)}`} 
                   alt="Payment QR" 
-                  style={{ width: '80px', height: '80px', border: '1px solid #7c3aed', padding: '5px', borderRadius: '8px', background: '#fff' }}
+                  style={{ width: '100px', height: '100px', border: '1px solid #7c3aed', padding: '5px', borderRadius: '8px', background: '#fff' }}
                 />
-              </button>
+              </div>
               {/* Only for actual print, static image */}
               <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${encodeURIComponent(`${(typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL) || 'https://medical-erp-sable.vercel.app'}/pay/${invoice.id}`)}`} 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://medical-erp-sable.vercel.app/pay/${invoice.id}`)}`} 
                 alt="Payment QR" 
-                style={{ width: '80px', height: '80px', border: '1px solid #7c3aed', padding: '5px', borderRadius: '8px', background: '#fff', display: 'none' }}
+                style={{ width: '100px', height: '100px', border: '1px solid #7c3aed', padding: '5px', borderRadius: '8px', background: '#fff' }}
                 className="only-print"
               />
               <div style={{ fontSize: '10px', marginTop: '5px', color: '#7c3aed', fontWeight: 'bold' }}>مسح للملخص والدفع 📱</div>

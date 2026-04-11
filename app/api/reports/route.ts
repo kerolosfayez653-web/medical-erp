@@ -149,14 +149,17 @@ export async function GET(request: Request) {
     const payables = initialSupplierCredit + (allPurBefore._sum.netAmount || 0) - 
       persons.filter(p => p.type === 'SUPPLIER').reduce((s, p) => s + getPersonPaid(p.id, 'OUT'), 0);
 
+    // Business Logic: Opening Cash Balance (10,278 EGP)
+    const openingCashBalance = 10278;
+
     const balanceSheet = {
-      cashOnHand,
+      cashOnHand: cashOnHand + openingCashBalance,
       receivables,
       payables,
       inventoryValue: endingInventoryValue,
-      previousProfit: 0, // Simplified for performance, can be derived by calculating profit before startDate
+      previousProfit: 0, 
       currentProfit: (totalSales - totalCOGS) - totalExpenses,
-      totalAssets: cashOnHand + receivables + endingInventoryValue
+      totalAssets: (cashOnHand + openingCashBalance) + receivables + endingInventoryValue
     };
 
     // --- Details for DRILL-DOWN (Paginated/Limited for health) ---
@@ -213,6 +216,9 @@ export async function GET(request: Request) {
       expenseBreakdown[e.category] = (expenseBreakdown[e.category] || 0) + e.amount;
     });
 
+    const totalPaymentsIn = payAgg.filter(p => p.type === 'IN').reduce((s, p) => s + p.amount, 0);
+    const totalPaymentsOut = payAgg.filter(p => p.type === 'OUT').reduce((s, p) => s + p.amount, 0);
+
     return NextResponse.json({
       success: true,
       totals: {
@@ -222,14 +228,14 @@ export async function GET(request: Request) {
         grossProfit: totalSales - totalCOGS,
         totalExpenses,
         netProfit: (totalSales - totalCOGS) - totalExpenses,
-        totalPaymentsIn: payAgg.filter(p => p.type === 'IN').reduce((s, p) => s + p.amount, 0),
-        totalPaymentsOut: payAgg.filter(p => p.type === 'OUT').reduce((s, p) => s + p.amount, 0),
+        totalPaymentsIn,
+        totalPaymentsOut,
         salesCount: salesAgg._count,
         purchasesCount: purAgg._count,
         totalDeliveryRevenue,
         totalDiscount,
         totalOpeningValue,
-        openingCashBalance: 0 
+        openingCashBalance 
       },
       balanceSheet,
       balanceSheetDetails: {

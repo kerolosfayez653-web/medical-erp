@@ -248,12 +248,27 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                       onClick={() => entry.items && setExpandedInvoice(expandedInvoice === idx ? null : idx)}>
                       <td style={td}>{date.toLocaleDateString("ar-EG")}</td>
                       <td style={{ ...td, textAlign: "right" }}>
-                        <span style={{ color: entry.type === "PAYMENT" ? "var(--success-color)" : entry.invoiceType === "PURCHASES" ? "#f59e0b" : "var(--text-primary)" }}>
+                        <span style={{ 
+                          color: entry.type === "PAYMENT" ? "var(--success-color)" : entry.invoiceType === "PURCHASES" ? "#f59e0b" : "var(--text-primary)",
+                          fontWeight: entry.type === "PAYMENT" ? "bold" : "normal"
+                        }}>
                           {entry.type === "PAYMENT" ? "💳 " : entry.invoiceType === "PURCHASES" ? "📥 " : "🧾 "}
                           {entry.description}
                         </span>
                         {entry.invoiceNumber && (
-                          <span style={{ fontSize: "0.75rem", color: "var(--text-secondary)", marginRight: "6px" }}>({entry.invoiceNumber})</span>
+                          <a 
+                            href={`/invoices?search=${entry.invoiceNumber}`}
+                            onClick={(e) => e.stopPropagation()}
+                            style={{ 
+                              fontSize: "0.8rem", 
+                              color: "var(--accent-color)", 
+                              marginRight: "8px",
+                              textDecoration: "underline",
+                              fontWeight: "bold"
+                            }}
+                          >
+                            (رقم الفاتورة: {entry.invoiceNumber})
+                          </a>
                         )}
                         {entry.items && <span style={{ fontSize: "0.7rem", color: "var(--accent-color)", marginRight: "6px" }}>{expandedInvoice === idx ? "▲" : "▼"} التفاصيل</span>}
                       </td>

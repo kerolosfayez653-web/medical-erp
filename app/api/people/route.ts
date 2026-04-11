@@ -22,8 +22,25 @@ export async function GET() {
       }
     });
 
+    // High performance aggregation for dashboard needs
+    const [invoiceAgg, paymentAgg] = await Promise.all([
+      prisma.invoice.groupBy({
+        by: ['personId'],
+        _sum: { netAmount: true }
+      }),
+      prisma.payment.groupBy({
+        by: ['personId'],
+        _sum: { amount: true }
+      })
+    ]);
+
+    const invMap = new Map(invoiceAgg.map(i => [i.personId, i._sum.netAmount || 0]));
+    const payMap = new Map(paymentAgg.map(p => [p.personId, p._sum.amount || 0]));
+
     const data = people.map(p => ({
       ...p,
+      totalInvoiced: Number(invMap.get(p.id) || 0),
+      totalPaid: Number(payMap.get(p.id) || 0),
       lastInvoice: p.invoices[0] || null,
       invoices: undefined,
     }));

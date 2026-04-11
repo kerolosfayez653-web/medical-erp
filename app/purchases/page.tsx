@@ -41,6 +41,8 @@ export default function PurchasesPage() {
   const [paymentMethod, setPaymentMethod] = useState("كاش");
   const [loading, setLoading]             = useState(false);
   const [searchProduct, setSearchProduct] = useState("");
+  const [suppSearch, setSuppSearch]       = useState("");
+  const [lastAddedId, setLastAddedId]     = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
@@ -50,8 +52,14 @@ export default function PurchasesPage() {
   }, []);
 
   const selectedSupplier = suppliers.find(s => String(s.id) === selectedSupplierId) || null;
+  const filteredSuppliersList = suppliers.filter(s => 
+    s.name.includes(suppSearch) || (s.phone && s.phone.includes(suppSearch))
+  );
 
   const addToCart = (product: Product) => {
+    setLastAddedId(product.id);
+    setTimeout(() => setLastAddedId(null), 800);
+
     const existing = cart.find(i => i.productId === product.id);
     if (!existing) {
       setCart([...cart, {
@@ -67,6 +75,8 @@ export default function PurchasesPage() {
         batchNumber: `PB-${Date.now().toString().slice(-6)}`,
         expiryDate: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
       }]);
+    } else {
+      setCart(cart.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i));
     }
   };
 
@@ -116,24 +126,65 @@ export default function PurchasesPage() {
           {/* Supplier Selector */}
           <div className="glass-panel">
             <h3 style={{ marginBottom: "1rem" }}>🏢 بيانات المورد</h3>
-            <div className="input-group">
-              <label>اختر المورد</label>
-              <select
-                value={selectedSupplierId}
-                onChange={e => setSelectedSupplierId(e.target.value)}
+            <div className="input-group" style={{ position: 'relative' }}>
+              <label>🏢 ابحث عن مورد واختاره</label>
+              <input 
+                type="text" 
+                placeholder="اكتب اسم المورد أو رقم الهاتف..." 
+                value={suppSearch}
+                onChange={e => {
+                  setSuppSearch(e.target.value);
+                  if (selectedSupplierId) setSelectedSupplierId(""); // Reset if editing
+                }}
+                onFocus={() => {
+                  if (selectedSupplier) setSuppSearch(""); // Clear for new search on focus
+                }}
                 className="input-field"
-              >
-                <option value="">-- يرجى الاختيار --</option>
-                {suppliers.map(s => (
-                  <option key={s.id} value={String(s.id)}>{s.name}</option>
-                ))}
-              </select>
+                style={{ fontSize: '1rem', padding: '12px' }}
+              />
+              
+              {/* Autocomplete Dropdown */}
+              {suppSearch && !selectedSupplierId && (
+                <div style={{ 
+                  position: 'absolute', top: '100%', left: 0, right: 0, 
+                  background: 'rgba(23, 23, 27, 0.98)', backdropFilter: 'blur(10px)',
+                  border: '1px solid var(--accent-color)', borderRadius: '12px',
+                  marginTop: '5px', zIndex: 9999, maxHeight: '200px', overflowY: 'auto',
+                  boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                }}>
+                  {filteredSuppliersList.length === 0 ? (
+                    <div style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>لا توجد نتائج</div>
+                  ) : (
+                    filteredSuppliersList.map(s => (
+                      <div 
+                        key={s.id} 
+                        onClick={() => {
+                          setSelectedSupplierId(String(s.id));
+                          setSuppSearch(s.name);
+                        }}
+                        style={{ 
+                          padding: '12px', 
+                          borderBottom: '1px solid rgba(255,255,255,0.05)', 
+                          cursor: 'pointer', 
+                          transition: '0.2s',
+                          color: '#fff'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <div style={{ fontWeight: 'bold' }}>{s.name}</div>
+                        {s.phone && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{s.phone}</div>}
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Supplier Info Card */}
             {selectedSupplier && (
-              <div style={{ marginTop: "1rem", background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: "10px", padding: "14px" }}>
-                <div style={{ fontWeight: "bold", fontSize: "1.05rem", marginBottom: "8px", color: "var(--success-color)" }}>
+              <div style={{ marginTop: "1rem", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "10px", padding: "14px" }}>
+                <div style={{ fontWeight: "bold", fontSize: "1.05rem", marginBottom: "8px", color: "var(--accent-color)" }}>
                   {selectedSupplier.name}
                 </div>
                 {selectedSupplier.phone && (
@@ -147,9 +198,9 @@ export default function PurchasesPage() {
                   </div>
                 )}
                 {selectedSupplier.currentBalance !== 0 && (
-                  <div style={{ fontSize: "0.85rem", marginTop: "6px", padding: "4px 8px", background: "rgba(245,158,11,0.15)", borderRadius: "6px" }}>
+                  <div style={{ fontSize: "0.85rem", marginTop: "6px", padding: "4px 8px", background: "rgba(239,68,68,0.15)", borderRadius: "6px" }}>
                     💳 متبقي له:{" "}
-                    <strong style={{ color: "#f59e0b" }}>
+                    <strong style={{ color: "var(--danger-color)" }}>
                       {fmt(Math.abs(selectedSupplier.currentBalance))} ج.م
                     </strong>
                   </div>
@@ -240,15 +291,15 @@ export default function PurchasesPage() {
         <div>
           {/* Cart */}
           {cart.length > 0 && (
-            <div className="glass-panel" style={{ marginBottom: "1.5rem", border: "1px solid var(--success-color)", padding: "16px" }}>
-              <h3 style={{ marginBottom: "1rem", color: "var(--success-color)" }}>
+            <div className="glass-panel" style={{ marginBottom: "1.5rem", border: "1px solid var(--accent-color)", padding: "16px" }}>
+              <h3 style={{ marginBottom: "1rem", color: "var(--accent-color)" }}>
                 📋 أصناف الطلبية ({cart.length} صنف)
               </h3>
               <div className="table-responsive">
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
                 <thead>
                   <tr style={{ background: "rgba(255,255,255,0.03)", textAlign: "center" }}>
-                    <th style={{ padding: "12px", textAlign: "right", color: 'var(--success-color)' }}>الصنف</th>
+                    <th style={{ padding: "12px", textAlign: "right", color: 'var(--accent-color)' }}>الصنف</th>
                     <th style={{ padding: "12px" }}>الكمية</th>
                     <th style={{ padding: "12px" }}>التشغيلة</th>
                     <th style={{ padding: "12px" }}>الصلاحية</th>
@@ -317,33 +368,34 @@ export default function PurchasesPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px", maxHeight: "500px", overflowY: "auto" }}>
               {filteredProducts.map(p => {
                 const inCart = cart.find(i => i.productId === p.id);
+                const isJustAdded = lastAddedId === p.id;
                 return (
                   <div
                     key={p.id}
                     onClick={() => addToCart(p)}
-                    style={{
-                      padding: "14px",
-                      background: inCart ? "rgba(16,185,129,0.12)" : "rgba(0,0,0,0.2)",
-                      borderRadius: "8px", cursor: "pointer",
-                      border: inCart ? "1px solid var(--success-color)" : "1px solid rgba(255,255,255,0.05)",
-                      transition: "var(--transition)",
-                    }}
-                    onMouseOver={e => e.currentTarget.style.borderColor = "var(--success-color)"}
-                    onMouseOut={e => { if (!inCart) e.currentTarget.style.borderColor = "rgba(255,255,255,0.05)"; }}
+                    className={`product-card ${inCart ? 'in-cart' : ''}`}
+                    style={isJustAdded ? { transform: 'scale(0.9)', borderColor: 'var(--accent-color)', boxShadow: '0 0 20px var(--accent-color)' } : {}}
                   >
                     <strong style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", lineHeight: "1.3" }}>{p.name}</strong>
                     <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: "4px" }}>
                       آخر تكلفة: {p.weightedAvgCost > 0 ? p.weightedAvgCost.toFixed(2) : "-"} ج.م
                     </div>
                     {p.lastPurchasePrice > 0 && (
-                      <div style={{ fontSize: "0.72rem", color: "var(--success-color)", marginBottom: "4px" }}>
+                      <div style={{ fontSize: "0.72rem", color: "var(--accent-color)", marginBottom: "4px" }}>
                         آخر شراء: {p.lastPurchasePrice.toFixed(2)} ج.م
                       </div>
                     )}
                     <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)" }}>
                       رصيد: {p.currentQty}
                     </div>
-                    {inCart && <div style={{ fontSize: "0.72rem", color: "var(--success-color)", marginTop: "4px" }}>✓ في الطلبية</div>}
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                       {inCart ? (
+                         <span style={{ fontSize: "0.72rem", color: "var(--accent-color)" }}>✓ ({inCart.quantity})</span>
+                       ) : (
+                         <span style={{ fontSize: "0.72rem", opacity: 0.6 }}>📥 {isJustAdded ? "تمت الإضافة" : "أضف للشراء"}</span>
+                       )}
+                       <span style={{ fontSize: '1rem', color: isJustAdded ? 'var(--success-color)' : 'var(--accent-color)' }}>{isJustAdded ? '✔' : '＋'}</span>
+                    </div>
                   </div>
                 );
               })}

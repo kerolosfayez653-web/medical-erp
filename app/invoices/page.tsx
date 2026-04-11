@@ -239,23 +239,23 @@ export default function InvoicesHistoryPage() {
                              <td style={{ padding: '12px 8px', color: 'var(--success-color)' }}>{safeFmt(inv.deliveryFee)}</td>
                              <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>{safeFmt(inv.netAmount)}</td>
                              <td style={{ padding: '12px 8px', color: 'var(--success-color)' }}>{safeFmt(inv.paidAmount)}</td>
-                             <td style={{ padding: '12px 8px' }}>
-                                {inv.paymentMethod ? (
-                                   <div style={{ fontSize: '0.8rem' }}>
-                                      <span style={{ color: 'var(--success-color)', display: 'block' }}>✅ {inv.paymentMethod}</span>
-                                      <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{new Date(inv.date).toLocaleDateString('ar-EG')}</span>
-                                   </div>
-                                ) : (
-                                   inv.payments && inv.payments.length > 0 ? (
-                                      <div style={{ fontSize: '0.8rem' }}>
-                                         <span style={{ color: 'var(--accent-color)', display: 'block' }}>💳 {inv.payments[0].method}</span>
-                                         <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{new Date(inv.payments[0].date).toLocaleDateString('ar-EG')}</span>
-                                      </div>
-                                   ) : (
-                                      <span style={{ color: 'var(--danger-color)', fontSize: '0.8rem' }}>❌ آجل</span>
-                                   )
-                                )}
-                             </td>
+                                                           <td style={{ padding: '12px 8px' }}>
+                                 {((inv.netAmount - (inv.paidAmount || 0)) <= 0.1) ? (
+                                    <div style={{ fontSize: '0.8rem' }}>
+                                       <span style={{ color: 'var(--success-color)', display: 'block' }}>✅ {inv.paymentMethod || 'خالص'}</span>
+                                       <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{new Date(inv.date).toLocaleDateString('ar-EG')}</span>
+                                    </div>
+                                 ) : (
+                                    (inv.paidAmount || 0) > 0 ? (
+                                       <div style={{ fontSize: '0.8rem' }}>
+                                          <span style={{ color: '#f59e0b', display: 'block', fontWeight: 'bold' }}>🔸 سداد جزئي</span>
+                                          <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>المتبقي: {safeFmt(inv.netAmount - (inv.paidAmount || 0))} ج.م</span>
+                                       </div>
+                                    ) : (
+                                       <span style={{ color: 'var(--danger-color)', fontSize: '0.8rem' }}>❌ آجل</span>
+                                    )
+                                 )}
+                              </td>
                              <td style={{ padding: '12px 8px' }}>
                                 <div style={{ display: 'flex', gap: '5px' }}>
                                   <button onClick={(e) => { e.stopPropagation(); window.open(`/invoices/${inv.id}/print`, '_blank'); }} className="btn" style={{ padding: '4px 8px', fontSize: '0.8rem', background: '#3b82f6', color: '#fff', border: 'none' }} title="طباعة">🖨️</button>

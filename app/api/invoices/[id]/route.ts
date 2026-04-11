@@ -16,7 +16,10 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
       }
     });
     if (!invoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
-    return NextResponse.json({ success: true, data: invoice });
+    return NextResponse.json(
+      { success: true, data: invoice, meta: { fetchedId: id, timestamp: Date.now() } },
+      { headers: { 'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate', 'Pragma': 'no-cache', 'Expires': '0' } }
+    );
   } catch (error) {
     return NextResponse.json({ error: 'Server error', details: String(error) }, { status: 500 });
   }
