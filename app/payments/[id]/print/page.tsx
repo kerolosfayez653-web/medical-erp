@@ -38,17 +38,34 @@ export default function PrintPaymentPage() {
     }}>
       <style>{`
         @page {
-          size: A5 landscape;
+          size: A4 portrait;
           margin: 0 !important;
         }
         @media print {
-          body { background: white !important; margin: 0 !important; padding: 0 !important; }
+          body { 
+            background: white !important; 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+          }
           .no-print { display: none !important; }
           .print-container { 
             padding: 0 !important; 
-            width: 100% !important; 
             margin: 0 !important; 
+            width: 210mm !important; 
+            height: 148.5mm !important;
+            overflow: hidden !important;
             border: none !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+          }
+          .voucher-box {
+            width: 200mm !important;
+            height: 138mm !important;
+            margin: 0 !important;
+            border: 1px solid #7c3aed !important;
           }
         }
         .voucher-box {
@@ -85,15 +102,15 @@ export default function PrintPaymentPage() {
         .amount-container {
           display: flex;
           align-items: center;
-          gap: 15px;
-          margin: 25px 0;
+          gap: 10px;
+          margin: 15px 0;
         }
         .amount-box {
           background: #fdf2f8;
-          border: 2px solid #fbcfe8;
-          padding: 15px 30px;
-          border-radius: 12px;
-          font-size: 24px;
+          border: 1px solid #fbcfe8;
+          padding: 10px 20px;
+          border-radius: 10px;
+          font-size: 20px;
           font-weight: 900;
           color: #be185d;
         }
@@ -101,7 +118,7 @@ export default function PrintPaymentPage() {
         .signatures {
           display: flex;
           justify-content: space-between;
-          margin-top: 50px;
+          margin-top: 30px;
           padding: 0 20px;
         }
         .sig-box { text-align: center; }
