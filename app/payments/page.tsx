@@ -71,9 +71,6 @@ export default function PaymentsPage() {
   const handleViewInvoice = async (invoiceId: number) => {
     if (isFetchingInvoice) return;
     
-    // DIAGNOSTIC ALERT: Confirm the ID detected by the browser
-    alert("🔍 نظام التشخيص: محاولة فتح الفاتورة برقم معرف (ID): " + invoiceId);
-    
     setViewingInvoice(null); // Clear previous data immediately
     
     if (!invoiceId || invoiceId === 0) {
@@ -321,7 +318,7 @@ export default function PaymentsPage() {
       {/* Header & Stats */}
       <div className="glass-panel" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', borderRight: '5px solid var(--accent-color)' }}>
         <div style={{ minWidth: '250px' }}>
-          <h1 className="gradient-text" style={{ margin: 0, fontSize: '1.8rem' }}>💰 التدفقات النقدية <span style={{fontSize: '0.6rem', color: '#fff', background: '#ef4444', padding: '2px 8px', borderRadius: '4px', verticalAlign: 'middle', marginLeft: '10px'}}>DIAGNOSTIC V2</span></h1>
+          <h1 className="gradient-text" style={{ margin: 0, fontSize: '1.8rem' }}>💰 التدفقات النقدية</h1>
           <p style={{ color: 'var(--text-secondary)', margin: '5px 0 0 0', fontSize: '0.9rem' }}>إدارة شاملة للمقبوضات والمدفوعات</p>
         </div>
         <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -683,7 +680,7 @@ export default function PaymentsPage() {
         <div style={modalOverlay}>
           <div className="glass-panel" style={{ width: '95%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-              <h2 className="gradient-text" style={{ margin: 0 }}>تفاصيل الفاتورة: {viewingInvoice.invoiceNumber} <span style={{fontSize: '0.8rem', opacity: 0.5}}>(Internal ID: {viewingInvoice.id})</span></h2>
+              <h2 className="gradient-text" style={{ margin: 0 }}>تفاصيل الفاتورة: {viewingInvoice.invoiceNumber}</h2>
               <button 
                 onClick={() => setViewingInvoice(null)} 
                 className="btn" 
