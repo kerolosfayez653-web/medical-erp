@@ -34,11 +34,11 @@ export async function POST(request: Request) {
       // 0. Pre-calculate COGS
       let totalCogs = 0;
       for (const item of items) {
-        const prod = await tx.product.findUnique({ where: { id: parseInt(item.productId) } });
+        const prod = await tx.product.findUnique({ where: { id: Number(item.productId) } });
         if (prod) {
-          const factor = prod.conversionFactor || 1;
-          const effectiveQty = item.unitType === 'SECONDARY' ? parseInt(item.quantity) : (parseInt(item.quantity) * factor);
-          totalCogs += effectiveQty * (prod.openingWeightedAvg || 0); // Use MWA for consistency
+          const factor = Number(prod.conversionFactor) || 1;
+          const effectiveQty = item.unitType === 'SECONDARY' ? parseFloat(item.quantity) : (parseFloat(item.quantity) * factor);
+          totalCogs += effectiveQty * (prod.openingWeightedAvg || 0); 
         }
       }
 
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         data: {
           type: type || 'SALES',
           invoiceNumber,
-          personId: personId ? parseInt(personId) : null,
+          personId: personId ? Number(personId) : null,
           totalAmount: itemsTotal,
           netAmount: total,
           paidAmount: parseFloat(paidAmount) || 0,
@@ -57,18 +57,18 @@ export async function POST(request: Request) {
           cogs: totalCogs,
           items: {
             create: await Promise.all(items.map(async (i: any) => {
-              const product = await tx.product.findUnique({ where: { id: parseInt(i.productId) } });
-              const factor = product?.conversionFactor || 1;
-              const effectiveQty = i.unitType === 'SECONDARY' ? parseInt(i.quantity) : (parseInt(i.quantity) * factor);
-              const price = parseFloat(i.price);
-              const qty = parseInt(i.quantity);
+              const product = await tx.product.findUnique({ where: { id: Number(i.productId) } });
+              const factor = Number(product?.conversionFactor) || 1;
+              const effectiveQty = i.unitType === 'SECONDARY' ? parseFloat(i.quantity) : (parseFloat(i.quantity) * factor);
+              const price = parseFloat(i.price) || 0;
+              const qty = parseFloat(i.quantity) || 0;
               return {
-                productId: parseInt(i.productId),
+                productId: Number(i.productId),
                 quantity: effectiveQty,
                 unitType: i.unitType || 'PRIMARY',
                 price: price,
                 total: price * qty,
-                totalNet: price * qty // Simple total for now, if item-level discount exists we'd subtract it
+                totalNet: price * qty 
               };
             }))
           }
@@ -78,7 +78,7 @@ export async function POST(request: Request) {
       // 2. Update Person Balance (الديون)
       if (personId) {
         await tx.person.update({
-          where: { id: parseInt(personId) },
+          where: { id: Number(personId) },
           data: { currentBalance: { increment: remaining } }
         });
       }
@@ -87,7 +87,7 @@ export async function POST(request: Request) {
       if (paidAmount > 0 && personId) {
         await tx.payment.create({
           data: {
-            personId: parseInt(personId),
+            personId: Number(personId),
             invoiceId: invoice.id,
             amount: parseFloat(paidAmount),
             type: 'IN',
@@ -99,12 +99,11 @@ export async function POST(request: Request) {
 
       // 4. Update Inventory Quantities (خصم المخزون - FIFO)
       for (const i of items) {
-        let product = await tx.product.findUnique({ where: { id: parseInt(i.productId) } });
+        let product = await tx.product.findUnique({ where: { id: Number(i.productId) } });
         if (!product) continue;
 
-        const factor = product.conversionFactor || 1;
-        // If sold as PRIMARY (Box), multiply by factor to get smallest unit qty
-        const effectiveQty = i.unitType === 'SECONDARY' ? parseInt(i.quantity) : (parseInt(i.quantity) * factor);
+        const factor = Number(product.conversionFactor) || 1;
+        const effectiveQty = i.unitType === 'SECONDARY' ? parseFloat(i.quantity) : (parseFloat(i.quantity) * factor);
         
         let qtyNeeded = effectiveQty;
         if (qtyNeeded > 0) {
