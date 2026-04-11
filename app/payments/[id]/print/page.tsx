@@ -29,7 +29,7 @@ export default function PrintPaymentPage() {
     <div className="print-container" style={{ 
       direction: 'rtl', 
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '10px',
+      padding: '0',
       maxWidth: '100%',
       margin: '0 auto',
       background: '#fff',
@@ -58,7 +58,7 @@ export default function PrintPaymentPage() {
             overflow: hidden !important;
             border: none !important;
             display: flex !important;
-            align-items: center !important;
+            align-items: flex-start !important;
             justify-content: center !important;
           }
           .voucher-box {
