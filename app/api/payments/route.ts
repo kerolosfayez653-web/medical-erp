@@ -3,8 +3,24 @@ import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const id = searchParams.get('id');
+
+    if (id) {
+       const payment = await prisma.payment.findUnique({
+          where: { id: Number(id) },
+          include: { 
+             person: true,
+             invoice: {
+                select: { invoiceNumber: true }
+             }
+          }
+       });
+       return NextResponse.json({ success: true, data: payment });
+    }
+
     const payments = await prisma.payment.findMany({
       include: { 
         person: true,

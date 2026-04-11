@@ -32,14 +32,13 @@ export default function PrintInvoicePage() {
     <div className="print-container" style={{ 
       direction: 'rtl', 
       fontFamily: 'system-ui, -apple-system, sans-serif',
-      padding: '40px',
+      padding: '20px',
       maxWidth: '100%',
       margin: '0 auto',
       background: '#fff',
       color: '#000',
-      minHeight: '148.5mm', // Half A4
-      position: 'relative',
-      border: '1px solid #eee'
+      minHeight: 'auto',
+      position: 'relative'
     }}>
       <style>{`
         @page {
@@ -51,9 +50,9 @@ export default function PrintInvoicePage() {
           .no-print, .glass-header, .mobile-overlay, .sidebar-container { display: none !important; }
           .only-print { display: block !important; }
           .print-container { 
-            padding: 8mm !important; 
-            width: 210mm !important; 
-            min-height: 297mm !important; 
+            padding: 5mm !important; 
+            width: 100% !important; 
+            min-height: auto !important; 
             max-width: none !important; 
             margin: 0 !important; 
             border: none !important;
@@ -76,10 +75,10 @@ export default function PrintInvoicePage() {
         th { background: #7c3aed; color: #fff; padding: 10px; text-align: right; font-size: 13px; }
         td { padding: 8px; border-bottom: 1px solid #f3f4f6; font-size: 13px; word-wrap: break-word; }
         
-        .totals-section { display: flex; justify-content: flex-end; margin-top: 5px; margin-bottom: 30px; }
-        .totals-table { width: 280px; }
-        .total-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
-        .total-final { font-size: 18px; font-weight: bold; color: #7c3aed; border-bottom: 3px double #7c3aed !important; margin-top: 5px; padding-top: 8px !important; }
+        .totals-section { display: flex; justify-content: flex-end; margin-top: 10px; margin-bottom: 20px; }
+        .totals-table { width: 250px; }
+        .total-row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f3f4f6; font-size: 13px; }
+        .total-final { font-size: 16px; font-weight: bold; color: #7c3aed; border-bottom: 3px double #7c3aed !important; margin-top: 3px; padding-top: 5px !important; }
         
         .print-footer { border-top: 2px solid #f3f4f6; padding-top: 10px; margin-top: auto; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: #666; text-align: center; width: 100%; }
         

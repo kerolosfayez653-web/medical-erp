@@ -221,67 +221,7 @@ export default function PaymentsPage() {
   };
 
   const handlePrint = (payment: Payment) => {
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) return;
-
-    printWindow.document.write(`
-      <html dir="rtl">
-        <head>
-          <title>سند ${payment.type === 'IN' ? 'قبض' : 'صرف'} - ${payment.id}</title>
-          <style>
-            body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 40px; }
-            .voucher { border: 2px solid #000; padding: 30px; border-radius: 15px; position: relative; }
-            .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 20px; }
-            .row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 1.2rem; }
-            .footer { margin-top: 50px; display: flex; justify-content: space-between; }
-            .stamp { width: 150px; height: 150px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; opacity: 0.5; font-size: 0.8rem; }
-            .amount-box { background: #f0f0f0; padding: 10px 20px; border-radius: 8px; font-weight: bold; font-size: 1.5rem; }
-          </style>
-        </head>
-        <body>
-          <div class="voucher">
-            <div class="header">
-              <h1>Antigravity ERP - سند ${payment.type === 'IN' ? 'قبض نقدية' : 'صرف نقدية'}</h1>
-              <p>تاريخ السند: ${new Date(payment.date).toLocaleDateString("ar-EG")}</p>
-            </div>
-            <div class="row">
-              <span>رقم السند: <strong>VOU-${payment.id}</strong></span>
-              <span>طريقة الدفع: <strong>${payment.method}</strong></span>
-            </div>
-            <div class="row" style="margin-top: 20px;">
-              <span>${payment.type === 'IN' ? 'استلمنا من السيد' : 'تم صرفه للسيد'}:</span>
-              <span style="font-weight: bold; font-size: 1.4rem;">${payment.person.name}</span>
-            </div>
-            <div class="row">
-              <span>مبلغ وقدره:</span>
-              <div class="amount-box">${payment.amount.toLocaleString()} ج.م</div>
-            </div>
-            <div class="row" style="margin-top: 20px;">
-              <span>وذلك مقابل:</span>
-              <span style="border-bottom: 1px dotted #000; flex: 1; margin-right: 15px;">${payment.notes || '---'}</span>
-            </div>
-            ${payment.invoice ? `
-            <div class="row" style="font-size: 0.9rem; opacity: 0.7;">
-              <span>مرتبط بفاتورة رقم: ${payment.invoice.invoiceNumber}</span>
-            </div>
-            ` : ''}
-            <div class="footer">
-              <div>
-                <p>توقيع المستلم:</p>
-                <p>..........................</p>
-              </div>
-              <div class="stamp">ختم الشركة</div>
-              <div>
-                <p>توقيع المحاسب:</p>
-                <p>..........................</p>
-              </div>
-            </div>
-          </div>
-          <script>window.onload = () => { window.print(); window.close(); }</script>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
+    window.open(`/payments/${payment.id}/print`, "_blank");
   };
 
   const filtered = payments.filter(p => {
