@@ -65,26 +65,28 @@ export default function SalesPage() {
     setLastAddedId(product.id);
     setTimeout(() => setLastAddedId(null), 800);
 
-    const existing = cart.find(i => i.productId === product.id);
-    const defaultPrice = product.avgSellPrice || (product.lots[0]?.sellingPrice || 0);
-    if (existing) {
-      setCart(cart.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i));
-    } else {
-      setCart([...cart, { 
+    const calcPrice = Number(product.avgSellPrice) || Number(product.lots[0]?.sellingPrice) || 0;
+    const factor = Number(product.conversionFactor) || 1;
+
+    setCart(prev => {
+      const existing = prev.find(i => i.productId === product.id);
+      if (existing) {
+        return prev.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+      }
+      return [...prev, { 
         productId: product.id, 
         name: product.name, 
-        price: defaultPrice, 
+        price: calcPrice, 
         quantity: 1, 
-        // Force high maxQty for out-of-stock items to allow sales flexibility
         maxQty: product.currentQty > 0 ? product.currentQty : 999999,
         unitType: 'PRIMARY',
-        unit: product.unit,
+        unit: product.unit || 'وحدة',
         secondaryUnit: product.secondaryUnit,
-        conversionFactor: product.conversionFactor,
-        primaryPrice: defaultPrice,
-        secondaryPrice: product.secondaryPrice || (defaultPrice / (product.conversionFactor || 1))
-      }]);
-    }
+        conversionFactor: factor,
+        primaryPrice: calcPrice,
+        secondaryPrice: Number(product.secondaryPrice) || (calcPrice / factor)
+      }];
+    });
   };
 
   const itemsTotal     = cart.reduce((s, i) => s + i.price * i.quantity, 0);

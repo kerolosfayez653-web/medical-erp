@@ -1,4 +1,5 @@
 import prisma from '../lib/prisma';
+import ThemeSwitcher from './ThemeSwitcher';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
@@ -102,6 +103,7 @@ export default async function Home() {
           </a>
         </div>
       </div>
+      <ThemeSwitcher />
     </div>
   );
 }

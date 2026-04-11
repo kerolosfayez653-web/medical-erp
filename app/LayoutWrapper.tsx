@@ -62,13 +62,6 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-             <button 
-                onClick={toggleTheme}
-                className="theme-toggle-btn no-print"
-                title={theme === "dark" ? "الوضع الفاتح" : "الوضع الليلي"}
-              >
-                {theme === "dark" ? "☀️" : "🌙"}
-             </button>
              <div className="desktop-only" style={{ textAlign: "right", borderRight: "1px solid var(--border-color)", paddingRight: "15px" }}>
                 <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>مرحباً بك</div>
                 <div style={{ fontSize: "0.95rem", fontWeight: "bold" }}>المدير العام</div>
