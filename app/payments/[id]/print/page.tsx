@@ -80,7 +80,7 @@ export default function PrintPaymentPage() {
         .header {
           display: flex;
           justify-content: space-between;
-          align-items: center;
+          align-items: flex-start;
           margin-bottom: 15px;
           border-bottom: 2px solid #f3f4f6;
           padding-bottom: 10px;
@@ -148,7 +148,7 @@ export default function PrintPaymentPage() {
       <div className="voucher-box" style={{ border: '1px solid #7c3aed', padding: '15px' }}>
         <div className="header" style={{ marginBottom: '15px', paddingBottom: '10px' }}>
           <div className="branding">
-            <img src="/logo.png" alt="24Med Logo" style={{ height: '60px', width: 'auto' }} />
+            <img src="/logo.png" alt="24Med Logo" style={{ height: '80px', width: 'auto' }} />
           </div>
           <div className="voucher-title">
             سند {payment.type === 'IN' ? 'قبض نقدية' : 'صرف نقدية'}

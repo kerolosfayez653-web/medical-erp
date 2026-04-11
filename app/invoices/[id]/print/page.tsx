@@ -59,7 +59,7 @@ export default function PrintInvoicePage() {
           }
         }
         .only-print { display: none; }
-        .invoice-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .invoice-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
         .branding h1 { margin: 0; color: #7c3aed; font-size: 26px; font-weight: 800; }
         .branding p { margin: 0; color: #db2777; font-size: 14px; font-weight: 600; }
         .logo-img { width: 100px; height: auto; object-fit: contain; }
@@ -97,7 +97,7 @@ export default function PrintInvoicePage() {
 
       <div className="invoice-header">
         <div className="branding">
-          <img src="/logo.png" alt="24Med Logo" style={{ height: '65px', width: 'auto', marginBottom: '8px' }} onError={(e) => e.currentTarget.style.display='none'} />
+          <img src="/logo.png" alt="24Med Logo" style={{ height: '85px', width: 'auto', marginBottom: '8px' }} onError={(e) => e.currentTarget.style.display='none'} />
           <div style={{ marginTop: '0', fontSize: '13px', color: '#4b5563' }}>
             <div style={{ marginBottom: '4px' }}>📞 الهاتف: 01022096076</div>
             <div style={{ marginBottom: '4px' }}>📧 البريد الإلكتروني: info@24med.com</div>
