@@ -61,30 +61,35 @@ export default function SalesPage() {
   );
 
   const addToCart = (product: Product) => {
+    // Definitive Log for debugging
+    console.log("Adding product:", product.name, "Price:", product.avgSellPrice);
+    
     // Visual feedback
     setLastAddedId(product.id);
     setTimeout(() => setLastAddedId(null), 800);
 
-    const calcPrice = Number(product.avgSellPrice) || Number(product.lots[0]?.sellingPrice) || 0;
+    // Ensure strictly number values to prevent logic from treating 0 as false
+    const currentPrice = typeof product.avgSellPrice === 'number' ? product.avgSellPrice : 0;
     const factor = Number(product.conversionFactor) || 1;
+    const pId = Number(product.id);
 
     setCart(prev => {
-      const existing = prev.find(i => i.productId === product.id);
+      const existing = prev.find(i => Number(i.productId) === pId);
       if (existing) {
-        return prev.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i);
+        return prev.map(i => Number(i.productId) === pId ? { ...i, quantity: i.quantity + 1 } : i);
       }
       return [...prev, { 
-        productId: product.id, 
+        productId: pId, 
         name: product.name, 
-        price: calcPrice, 
+        price: currentPrice, 
         quantity: 1, 
-        maxQty: product.currentQty > 0 ? product.currentQty : 999999,
+        maxQty: 999999, // Absolute flexibility
         unitType: 'PRIMARY',
         unit: product.unit || 'وحدة',
         secondaryUnit: product.secondaryUnit,
         conversionFactor: factor,
-        primaryPrice: calcPrice,
-        secondaryPrice: Number(product.secondaryPrice) || (calcPrice / factor)
+        primaryPrice: currentPrice,
+        secondaryPrice: Number(product.secondaryPrice) || (currentPrice / factor)
       }];
     });
   };
