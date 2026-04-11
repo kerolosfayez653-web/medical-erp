@@ -100,7 +100,7 @@ export default function PrintInvoicePage() {
           <img src="/logo.png" alt="24Med Logo" style={{ height: '85px', width: 'auto', marginBottom: '8px' }} onError={(e) => e.currentTarget.style.display='none'} />
           <div style={{ marginTop: '0', fontSize: '13px', color: '#4b5563' }}>
             <div style={{ marginBottom: '4px' }}>📞 الهاتف: 01022096076</div>
-            <div style={{ marginBottom: '4px' }}>📧 البريد الإلكتروني: info@24med.com</div>
+            <div style={{ marginBottom: '4px' }}>📧 البريد الإلكتروني: 24med.eg@gmail.com</div>
             <div style={{ fontWeight: 'bold' }}>
               🌐 <a href="https://24-med.com" target="_blank" dir="ltr" style={{ color: '#7c3aed', textDecoration: 'underline' }}>24-med.com</a>
             </div>
