@@ -8,6 +8,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
   const menuItems = [
     { path: '/', label: '🏠 لوحة التحكم والملخص' },
     { path: '/invoices', label: '🧾 سجل الفواتير' },
+    { path: '/payments', label: '💰 التحصيلات والسندات' },
     { path: '/inventory', label: '📦 المستودع والجرد' },
     { path: '/sales', label: '💚 فاتورة مبيعات جديدة' },
     { path: '/purchases', label: '📥 فاتورة مشتريات جديدة' },
