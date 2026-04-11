@@ -12,7 +12,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
 
-  const isPrintPage = pathname?.endsWith("/print");
+  const isPublicPage = pathname?.endsWith("/print") || pathname?.startsWith("/pay/");
 
   useEffect(() => {
     // Load persisted theme
@@ -33,8 +33,8 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
     localStorage.setItem("theme", newTheme);
   };
 
-  if (isPrintPage) {
-    return <div className="print-only-layout">{children}</div>;
+  if (isPublicPage) {
+    return <div className="public-layout">{children}</div>;
   }
 
   return (
