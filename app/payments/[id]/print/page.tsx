@@ -15,7 +15,7 @@ export default function PrintPaymentPage() {
         .then(res => {
           if (res.success) {
             setPayment(res.data);
-            document.title = `سند-${res.data.type === 'IN' ? 'قبض' : 'صرف'}-${res.data.id}`;
+            document.title = `${res.data.person?.name}-${res.data.amount}`;
           }
         })
         .finally(() => setLoading(false));
