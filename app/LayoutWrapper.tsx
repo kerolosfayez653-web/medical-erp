@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import Sidebar from "./Sidebar";
 
 interface LayoutWrapperProps {
@@ -7,8 +8,11 @@ interface LayoutWrapperProps {
 }
 
 export default function LayoutWrapper({ children }: LayoutWrapperProps) {
+  const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+
+  const isPrintPage = pathname?.endsWith("/print");
 
   useEffect(() => {
     // Load persisted theme
@@ -28,6 +32,10 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
     document.documentElement.setAttribute("data-theme", newTheme);
     localStorage.setItem("theme", newTheme);
   };
+
+  if (isPrintPage) {
+    return <div className="print-only-layout">{children}</div>;
+  }
 
   return (
     <div className="app-container">
