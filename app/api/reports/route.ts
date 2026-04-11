@@ -168,6 +168,51 @@ export async function GET(request: Request) {
       orderBy: { date: 'desc' }
     });
 
+    // Inventory Breakdown
+    const inventoryDetails = products.map(p => {
+      const pPurchased = purMap.get(p.id)?._sum?.quantity || 0;
+      const pSold = salesMap.get(p.id) || 0;
+      const curQty = p.openingQty + pPurchased - pSold;
+      const wac = productWAC.get(p.id) || 0;
+      return {
+        id: p.id,
+        name: p.name,
+        qty: curQty,
+        wac: wac,
+        value: curQty * wac
+      };
+    }).filter(i => i.qty !== 0);
+
+    // Customer & Supplier Details
+    const [personSalesAgg, personPurAgg] = await Promise.all([
+      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'SALES', date: { lt: endDate } }, _sum: { netAmount: true } }),
+      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'PURCHASES', date: { lt: endDate } }, _sum: { netAmount: true } })
+    ]);
+
+    const salesMapP = new Map(personSalesAgg.map(i => [i.personId, Number(i._sum.netAmount) || 0]));
+    const purMapP = new Map(personPurAgg.map(i => [i.personId, Number(i._sum.netAmount) || 0]));
+
+    const customerDetails = persons.filter(p => p.type === 'CUSTOMER').map(p => {
+      const sales = salesMapP.get(p.id) || 0;
+      const paid = getPersonPaid(p.id, 'IN');
+      const bal = p.initialBalance + sales - paid;
+      return { name: p.name, initial: p.initialBalance, sales, paid, balance: bal };
+    }).filter(p => p.balance !== 0);
+
+    const supplierDetails = persons.filter(p => p.type === 'SUPPLIER').map(p => {
+      const purchases = purMapP.get(p.id) || 0;
+      const paid = getPersonPaid(p.id, 'OUT');
+      const bal = p.initialBalance + purchases - paid;
+      return { name: p.name, initial: p.initialBalance, purchases, paid, balance: bal };
+    }).filter(p => p.balance !== 0);
+
+    // Expense Breakdown for totals
+    const expenseBreakdown: Record<string, number> = {};
+    const allExpenses = await prisma.expense.findMany({ where: { date: { gte: startDate, lt: endDate } } });
+    allExpenses.forEach(e => {
+      expenseBreakdown[e.category] = (expenseBreakdown[e.category] || 0) + e.amount;
+    });
+
     return NextResponse.json({
       success: true,
       totals: {
@@ -184,18 +229,18 @@ export async function GET(request: Request) {
         totalDeliveryRevenue,
         totalDiscount,
         totalOpeningValue,
-        openingCashBalance: 0 // Derived from payments
+        openingCashBalance: 0 
       },
       balanceSheet,
       balanceSheetDetails: {
-        customers: [], // Deferred or limited
-        suppliers: [], 
-        inventory: [],
+        customers: customerDetails,
+        suppliers: supplierDetails, 
+        inventory: inventoryDetails.sort((a,b) => b.value - a.value).slice(0, 100),
         cash: payAgg.sort((a,b) => b.date.getTime() - a.date.getTime())
       },
-      expenseBreakdown: {},
+      expenseBreakdown,
       invoices,
-      expenses: [],
+      expenses: allExpenses,
       monthly: []
     });
 
