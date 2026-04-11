@@ -62,10 +62,11 @@ export default function PrintPaymentPage() {
             justify-content: center !important;
           }
           .voucher-box {
-            width: 200mm !important;
-            height: 138mm !important;
+            width: 190mm !important;
+            height: 125mm !important;
             margin: 0 !important;
             border: 1px solid #7c3aed !important;
+            page-break-inside: avoid !important;
           }
         }
         .voucher-box {
@@ -79,9 +80,9 @@ export default function PrintPaymentPage() {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 30px;
+          margin-bottom: 15px;
           border-bottom: 2px solid #f3f4f6;
-          padding-bottom: 15px;
+          padding-bottom: 10px;
         }
         .branding h1 { margin: 0; color: #7c3aed; font-size: 24px; font-weight: 800; }
         .branding p { margin: 0; color: #db2777; font-size: 13px; font-weight: 600; }
@@ -95,7 +96,7 @@ export default function PrintPaymentPage() {
           font-weight: bold;
         }
         
-        .row { display: flex; justify-content: space-between; margin-bottom: 20px; font-size: 16px; }
+        .row { display: flex; justify-content: space-between; margin-bottom: 15px; font-size: 14px; }
         .field-label { color: #666; min-width: 120px; }
         .field-value { font-weight: bold; border-bottom: 1px dotted #ccc; flex: 1; padding-right: 10px; }
         
