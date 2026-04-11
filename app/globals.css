@@ -282,36 +282,6 @@ main {
 h1, h2, h3 { color: var(--text-primary); margin-bottom: 0.5rem; }
 p { color: var(--text-secondary); }
 
-/* Fixed Floating Theme Toggle */
-.fixed-theme-toggle {
-  position: fixed;
-  bottom: 24px;
-  left: 24px;
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: var(--accent-color);
-  color: white;
-  border: none;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  cursor: pointer;
-  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-  z-index: 1000;
-  transition: var(--transition);
-}
-
-.fixed-theme-toggle:hover {
-  transform: scale(1.1) rotate(15deg);
-  box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
-}
-
-.fixed-theme-toggle:active {
-  transform: scale(0.9);
-}
-
 /* Product Cards */
 .product-card {
   padding: 14px;

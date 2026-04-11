@@ -45,6 +45,8 @@ export default function SalesPage() {
   const [loading, setLoading]             = useState(false);
   const [searchProduct, setSearchProduct] = useState("");
   const [lastInvoiceId, setLastInvoiceId] = useState<number | null>(null);
+  const [custSearch, setCustSearch]       = useState("");
+  const [lastAddedId, setLastAddedId]     = useState<number | null>(null);
 
   useEffect(() => {
     fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
@@ -54,8 +56,15 @@ export default function SalesPage() {
   }, []);
 
   const selectedCustomer = customers.find(c => String(c.id) === selectedCustomerId) || null;
+  const filteredCustomersList = customers.filter(c => 
+    c.name.includes(custSearch) || (c.phone && c.phone.includes(custSearch))
+  );
 
   const addToCart = (product: Product) => {
+    // Visual feedback
+    setLastAddedId(product.id);
+    setTimeout(() => setLastAddedId(null), 800);
+
     const existing = cart.find(i => i.productId === product.id);
     const defaultPrice = product.avgSellPrice || (product.lots[0]?.sellingPrice || 0);
     if (existing) {
@@ -128,15 +137,23 @@ export default function SalesPage() {
           <div className="glass-panel">
             <h3 style={{ marginBottom: "1rem" }}>👤 بيانات العميل</h3>
             <div className="input-group">
-              <label>اختر العميل</label>
+              <label>🔍 بحث عن عميل / اختيار</label>
+              <input 
+                type="text" 
+                placeholder="ابحث بالاسم أو الهاتف..." 
+                value={custSearch}
+                onChange={e => setCustSearch(e.target.value)}
+                className="input-field"
+                style={{ marginBottom: '10px', fontSize: '0.9rem' }}
+              />
               <select
                 value={selectedCustomerId}
                 onChange={e => setSelectedCustomerId(e.target.value)}
                 className="input-field"
               >
-                <option value="">-- يرجى الاختيار --</option>
-                {customers.map(c => (
-                  <option key={c.id} value={String(c.id)}>{c.name}</option>
+                <option value="">-- {filteredCustomersList.length === 0 ? "لا يوجد نتائج" : "اختر العميل"} --</option>
+                {filteredCustomersList.map(c => (
+                  <option key={c.id} value={String(c.id)}>{c.name} {c.phone ? `(${c.phone})` : ""}</option>
                 ))}
               </select>
             </div>
@@ -329,15 +346,17 @@ export default function SalesPage() {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px", maxHeight: "500px", overflowY: "auto" }}>
               {filteredProducts.map(p => {
                 const inCart  = cart.find(i => i.productId === p.id);
+                const isJustAdded = lastAddedId === p.id;
                 return (
                   <div
                     key={p.id}
                     onClick={() => addToCart(p)}
                     className={`product-card ${inCart ? 'in-cart' : ''}`}
+                    style={isJustAdded ? { transform: 'scale(0.9)', borderColor: 'var(--accent-color)', boxShadow: '0 0 20px var(--accent-color)' } : {}}
                   >
                     <strong style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", lineHeight: "1.3" }}>{p.name}</strong>
                     <div style={{ fontSize: "0.78rem", color: "var(--text-secondary)", marginBottom: "4px" }}>
-                      سعر: {p.avgSellPrice > 0 ? p.avgSellPrice.toFixed(2) : "-"} ج.م
+                      سعر: {p.avgSellPrice > 0 ? p.avgSellPrice.toFixed(2) : "0"} ج.م
                     </div>
                     {p.lastSellPrice > 0 && (
                       <div style={{ fontSize: "0.72rem", color: "var(--accent-color)", marginBottom: "4px" }}>
@@ -352,9 +371,9 @@ export default function SalesPage() {
                        {inCart ? (
                          <span style={{ fontSize: "0.72rem", color: "var(--accent-color)" }}>✓ ({inCart.quantity})</span>
                        ) : (
-                         <span style={{ fontSize: "0.72rem", opacity: 0.6 }}>🛒 أضف للبيع</span>
+                         <span style={{ fontSize: "0.72rem", opacity: 0.6 }}>🛒 {isJustAdded ? "تمت الإضافة" : "أضف للبيع"}</span>
                        )}
-                       <span style={{ fontSize: '1rem', color: 'var(--accent-color)' }}>＋</span>
+                       <span style={{ fontSize: '1rem', color: isJustAdded ? 'var(--success-color)' : 'var(--accent-color)' }}>{isJustAdded ? '✔' : '＋'}</span>
                     </div>
                   </div>
                 );

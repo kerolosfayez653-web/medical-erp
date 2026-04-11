@@ -158,15 +158,20 @@ export async function GET(request: Request) {
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
+    // Fix: Professional header formatting for Arabic filenames
     return new Response(buf, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="${encodeURIComponent(fileName)}"`
+        'Content-Disposition': `attachment; filename*=UTF-8''${encodeURIComponent(fileName)}`,
+        'Cache-Control': 'no-cache'
       }
     });
 
   } catch (error) {
-    console.error('Export error:', error);
-    return NextResponse.json({ error: String(error) }, { status: 500 });
+    console.error('Export error details:', error);
+    return NextResponse.json({ 
+      success: false, 
+      error: 'خطأ أثناء تصدير البيانات: ' + String(error) 
+    }, { status: 500 });
   }
 }

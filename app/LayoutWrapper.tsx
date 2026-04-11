@@ -79,15 +79,6 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
         <div className="main-content">
           {children}
         </div>
-
-        {/* Fixed Floating Theme Toggle */}
-        <button 
-          onClick={toggleTheme}
-          className="fixed-theme-toggle no-print"
-          title={theme === "dark" ? "الوضع الفاتح" : "الوضع الليلي"}
-        >
-          {theme === "dark" ? "☀️" : "🌙"}
-        </button>
       </main>
     </div>
   );
