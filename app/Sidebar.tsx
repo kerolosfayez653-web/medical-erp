@@ -20,8 +20,8 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
 
   return (
     <aside className={`sidebar ${isOpen ? 'open' : ''}`}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2.5rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
-        <h2 className="gradient-text" style={{ margin: 0, fontSize: '1.8rem' }}>24MED</h2>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '1px solid var(--border-color)' }}>
+        <img src="/logo.png" alt="24Med Logo" style={{ maxWidth: '180px', height: 'auto' }} />
         <button 
           onClick={onClose}
           className="mobile-only"

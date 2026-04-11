@@ -148,8 +148,7 @@ export default function PrintPaymentPage() {
       <div className="voucher-box" style={{ border: '1px solid #7c3aed', padding: '15px' }}>
         <div className="header" style={{ marginBottom: '15px', paddingBottom: '10px' }}>
           <div className="branding">
-            <h1>24MED</h1>
-            <p>FOR MEDICAL SUPPLIES</p>
+            <img src="/logo.png" alt="24Med Logo" style={{ width: '130px', height: 'auto' }} />
           </div>
           <div className="voucher-title">
             سند {payment.type === 'IN' ? 'قبض نقدية' : 'صرف نقدية'}

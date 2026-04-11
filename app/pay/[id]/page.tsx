@@ -50,9 +50,7 @@ export default function PaymentSummaryPage() {
     }}>
       {/* Brand Header */}
       <div style={{ textAlign: 'center', marginTop: '1rem', marginBottom: '1.5rem' }}>
-        <img src="/logo.png" alt="24Med Logo" style={{ width: '100px', marginBottom: '0.5rem' }} />
-        <h1 style={{ margin: 0, color: '#7c3aed', fontSize: '1.8rem', fontWeight: '900' }}>24MED</h1>
-        <p style={{ margin: 0, color: '#db2777', fontWeight: 'bold', fontSize: '14px' }}>FOR MEDICAL SUPPLIES</p>
+        <img src="/logo.png" alt="24Med Logo" style={{ width: '150px', marginBottom: '0.5rem' }} />
       </div>
 
       {/* Receipt Card */}

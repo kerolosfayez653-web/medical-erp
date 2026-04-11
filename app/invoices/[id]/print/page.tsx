@@ -97,9 +97,7 @@ export default function PrintInvoicePage() {
 
       <div className="invoice-header">
         <div className="branding">
-          <h1>24MED</h1>
-          <p>FOR MEDICAL SUPPLIES</p>
-          <div style={{ marginTop: '12px', fontSize: '13px', color: '#4b5563' }}>
+          <div style={{ marginTop: '0', fontSize: '13px', color: '#4b5563' }}>
             <div style={{ marginBottom: '4px' }}>📞 الهاتف: 01022096076</div>
             <div style={{ marginBottom: '4px' }}>📧 البريد الإلكتروني: info@24med.com</div>
             <div style={{ fontWeight: 'bold' }}>
@@ -109,7 +107,7 @@ export default function PrintInvoicePage() {
           </div>
         </div>
         
-        <img src="/logo.png" alt="24Med Logo" className="logo-img" onError={(e) => e.currentTarget.style.display='none'} />
+        <img src="/logo.png" alt="24Med Logo" style={{ width: '180px', height: 'auto' }} onError={(e) => e.currentTarget.style.display='none'} />
 
         <div className="invoice-meta">
           <h2>{invoice.type === 'SALES' ? 'فاتورة مبيعات' : 'فاتورة مشتريات'}</h2>
