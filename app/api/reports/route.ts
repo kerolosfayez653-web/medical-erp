@@ -50,7 +50,8 @@ export async function GET(request: Request) {
         _sum: { amount: true }
       }),
       prisma.payment.findMany({
-        where: { date: { gte: startDate, lt: endDate } }
+        where: { date: { gte: startDate, lt: endDate } },
+        include: { person: true }
       })
     ]);
 
