@@ -68,10 +68,11 @@ export default function SalesPage() {
     setLastAddedId(product.id);
     setTimeout(() => setLastAddedId(null), 800);
 
-    // Ensure strictly number values to prevent logic from treating 0 as false
-    const currentPrice = typeof product.avgSellPrice === 'number' ? product.avgSellPrice : 0;
-    const factor = Number(product.conversionFactor) || 1;
-    const pId = Number(product.id);
+    // Hardened numeric casts to ensure '0' is not blocked by logical OR checks
+    const pId          = Number(product.id);
+    const currentPrice = typeof product.avgSellPrice === 'number' ? Number(product.avgSellPrice) : 0;
+    const factor       = Number(product.conversionFactor) || 1;
+    const sPrice       = typeof product.secondaryPrice === 'number' ? Number(product.secondaryPrice) : (currentPrice / factor);
 
     setCart(prev => {
       const existing = prev.find(i => Number(i.productId) === pId);
@@ -83,13 +84,13 @@ export default function SalesPage() {
         name: product.name, 
         price: currentPrice, 
         quantity: 1, 
-        maxQty: 999999, // Absolute flexibility
+        maxQty: 999999,
         unitType: 'PRIMARY',
         unit: product.unit || 'وحدة',
         secondaryUnit: product.secondaryUnit,
         conversionFactor: factor,
         primaryPrice: currentPrice,
-        secondaryPrice: Number(product.secondaryPrice) || (currentPrice / factor)
+        secondaryPrice: sPrice
       }];
     });
   };

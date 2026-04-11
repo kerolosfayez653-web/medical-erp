@@ -66,6 +66,11 @@ export async function GET() {
         cogs,
         grossProfit,
         avgSellPrice,
+        unit: p.unit,
+        secondaryUnit: p.secondaryUnit,
+        conversionFactor: p.conversionFactor,
+        secondaryPrice: p.secondaryPrice,
+        lastSellPrice: p.lastSellPrice || (allSales[0]?.price || 0)
       };
     });
 
