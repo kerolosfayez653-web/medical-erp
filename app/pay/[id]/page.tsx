@@ -141,7 +141,9 @@ export default function PaymentSummaryPage() {
         )}
       </div>
 
-      <div style={{ marginTop: '2rem', color: '#94a3b8', fontSize: '0.75rem', textAlign: 'center', maxWidth: '300px' }}>
+      <div style={{ marginTop: '2rem', color: '#94a3b8', fontSize: '0.8rem', textAlign: 'center', maxWidth: '300px' }}>
+        <div style={{ fontWeight: 'bold', color: '#7c3aed', marginBottom: '5px' }}>🌐 24-med.com</div>
+        <div style={{ fontSize: '0.7rem', color: '#db2777', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>visit our website</div>
         يرجى التأكد من اسم المستلم (kerolos) عند التحويل.<br/>
         جميع الحقوق محفوظة لنظام 24MED لإدارة المستلزمات الطبية © 2026
       </div>

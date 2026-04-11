@@ -101,7 +101,9 @@ export default function PrintInvoicePage() {
           <p>FOR MEDICAL SUPPLIES</p>
           <div style={{ marginTop: '12px', fontSize: '13px', color: '#4b5563' }}>
             <div style={{ marginBottom: '4px' }}>📞 الهاتف: 01022096076</div>
-            <div>📧 البريد الإلكتروني: info@24med.com</div>
+            <div style={{ marginBottom: '4px' }}>📧 البريد الإلكتروني: info@24med.com</div>
+            <div style={{ fontWeight: 'bold', color: '#7c3aed' }}>🌐 24-med.com</div>
+            <div style={{ fontSize: '10px', color: '#db2777' }}>visit our website</div>
           </div>
         </div>
         
@@ -229,9 +231,10 @@ export default function PrintInvoicePage() {
       </div>
 
       <div className="print-footer">
-        <div>نظام 24MED لإدارة المستلزمات الطبية</div>
+        <div>نظام 24MED لإدارة المستلزمات الطبية | 24-med.com</div>
         <div style={{ fontSize: '10px' }}>تاريخ الطباعة: {new Date().toLocaleString('ar-EG')}</div>
         <div style={{ fontWeight: 'bold' }}>البضاعة المباعة لا ترد ولا تستبدل بعد 14 يوماً</div>
+        <div style={{ marginTop: '5px', color: '#7c3aed' }}>Visit our website: 24-med.com</div>
       </div>
     </div>
   );
