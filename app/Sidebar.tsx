@@ -11,6 +11,8 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
     { path: '/payments', label: '💰 التحصيلات والسندات' },
     { path: '/inventory', label: '📦 المستودع والجرد' },
     { path: '/sales', label: '💚 فاتورة مبيعات جديدة' },
+    { path: '/quotations', label: '📝 عرض سعر جديد' },
+    { path: '/quotations/list', label: '📋 سجل عروض الأسعار' },
     { path: '/purchases', label: '📥 فاتورة مشتريات جديدة' },
     { path: '/people', label: '👥 دليل العملاء والموردين' },
     { path: '/expenses', label: '💰 المصروفات' },

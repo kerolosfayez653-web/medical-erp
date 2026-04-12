@@ -32,6 +32,7 @@ model Product {
 
   lots                InventoryLot[]
   invoiceItems        InvoiceItem[]
+  quotationItems      QuotationItem[]
 }
 
 // المخزون وتشغيلات تواريخ الصلاحية (Batch & Expiry Date)
@@ -60,6 +61,7 @@ model Person {
   currentBalance  Float     @default(0) // الرصيد الحالي (موجب أو سالب)
 
   invoices        Invoice[]
+  quotations      Quotation[]
   payments        Payment[]
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
@@ -149,4 +151,42 @@ model Expense {
   paymentMethod String?  // طريقة الدفع
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+}
+
+// عروض الأسعار
+model Quotation {
+  id              Int             @id @default(autoincrement())
+  quotationNumber String?         @unique
+  personId        Int?
+  person          Person?         @relation(fields: [personId], references: [id])
+  date            DateTime        @default(now())
+  expiryDate      DateTime?
+  
+  totalAmount     Float           // الإجمالي قبل الخصم والإضافات
+  discount        Float           @default(0)
+  deliveryFee     Float           @default(0)
+  netAmount       Float           @default(0) // الصافي النهائي
+  
+  status          String          @default("PENDING") // PENDING, ACCEPTED, REJECTED, EXPIRED
+  notes           String?         // ملاحظات أو البيان
+  
+  items           QuotationItem[]
+  
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+}
+
+// محتويات عرض السعر
+model QuotationItem {
+  id              Int           @id @default(autoincrement())
+  quotationId     Int
+  quotation       Quotation     @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  
+  productId       Int
+  product         Product       @relation(fields: [productId], references: [id])
+  
+  quantity        Int
+  unitType        String        @default("PRIMARY")
+  price           Float         // سعر الوحدة المتفق عليه في العرض
+  total           Float         // quantity * price
 }
