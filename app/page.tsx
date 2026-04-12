@@ -97,6 +97,7 @@ export default async function Home() {
         
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <a href="/sales" className="btn btn-primary" style={{ flex: '1 1 200px' }}>فاتورة مبيعات جديدة</a>
+          <a href="/quotations" className="btn btn-primary" style={{ flex: '1 1 200px', background: 'linear-gradient(135deg, #059669, #10b981)' }}>إنشاء عرض سعر جديد</a>
           <a href="/purchases" className="btn btn-secondary" style={{ flex: '1 1 200px' }}>إدخال مشتريات للمخزن</a>
           <a href="/inventory" className="btn" style={{ flex: '1 1 200px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
             استعراض المستودع والجرد
