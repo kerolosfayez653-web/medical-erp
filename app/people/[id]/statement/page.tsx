@@ -1,3 +1,4 @@
+"use client";
 import React, { useState, useEffect, use } from "react";
 import ExportBtn from "@/components/ExportBtn";
 
