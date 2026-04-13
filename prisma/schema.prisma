@@ -26,6 +26,9 @@ model Product {
   // بيانات 1/1/2026 من الإكسيل
   openingQty          Float          @default(0) 
   openingWeightedAvg  Float          @default(0) 
+  secondaryPrice      Float?         // سعر بيع الوحدة الصغرى
+  lastSellPrice       Float?         // آخر سعر بيع مسجل
+  lastPurchasePrice   Float?         // آخر سعر شراء مسجل
   
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt

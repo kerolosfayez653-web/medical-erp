@@ -30,7 +30,7 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     console.error('Update Product Error:', error);
     return NextResponse.json({ 
       success: false, 
-      error: error instanceof Error ? error.message : String(error) 
+      error: 'فشل الحفظ: حدث خطأ في الخادم أو في توافق البيانات'
     }, { status: 500 });
   }
 }
