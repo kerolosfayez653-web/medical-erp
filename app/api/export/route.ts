@@ -93,7 +93,7 @@ export async function GET(request: Request) {
       const invType = searchParams.get('invType');
       const invoices = await prisma.invoice.findMany({
         where: invType && invType !== 'ALL' ? { type: invType as any } : {},
-        include: { person: { select: { name: true } } },
+        include: { person: { select: { name: true, type: true } } },
         orderBy: { date: 'desc' }
       });
       fileName = invType === 'SALES' ? 'سجل_المبيعات.xlsx' : invType === 'PURCHASES' ? 'سجل_المشتريات.xlsx' : 'سجل_الفواتير.xlsx';
@@ -101,6 +101,8 @@ export async function GET(request: Request) {
       data = invoices.map(inv => ({
         'رقم الفاتورة': inv.invoiceNumber || inv.id.toString(),
         'التاريخ': inv.date ? inv.date.toLocaleDateString('ar-EG') : '',
+        'النوع': inv.type === 'SALES' ? 'مبيعات' : inv.type === 'PURCHASES' ? 'مشتريات' : inv.type,
+        'تصنيف الجهة': inv.person?.type === 'CUSTOMER' ? 'عميل' : inv.person?.type === 'SUPPLIER' ? 'مورد' : 'غير محدد',
         'العميل/المورد': inv.person?.name || 'غير محدد',
         'الإجمالي': inv.totalAmount || 0,
         'الخصم': inv.discount || 0,
@@ -186,6 +188,12 @@ export async function GET(request: Request) {
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
+    
+    // Enable Autofilter
+    if (data.length > 0) {
+      const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+      ws['!autofilter'] = { ref: XLSX.utils.encode_range(range) };
+    }
     
     // Attempt Right-to-Left (Note: Support varies by XLSX reader)
     if (!ws['!views']) ws['!views'] = [];
