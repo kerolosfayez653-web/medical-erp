@@ -10,10 +10,10 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const updated = await prisma.product.update({
       where: { id: parseInt(id) },
       data: {
-        unit: unit || null,
-        secondaryUnit: secondaryUnit || null,
-        conversionFactor: parseInt(conversionFactor) || 1,
-        secondaryPrice: parseFloat(secondaryPrice) || null
+        unit: typeof unit === 'string' ? unit : undefined,
+        secondaryUnit: typeof secondaryUnit === 'string' ? secondaryUnit : undefined,
+        conversionFactor: typeof conversionFactor === 'number' ? conversionFactor : undefined,
+        secondaryPrice: typeof secondaryPrice === 'number' ? secondaryPrice : undefined,
       }
     });
 
