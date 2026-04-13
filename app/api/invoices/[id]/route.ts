@@ -6,8 +6,8 @@ export const dynamic = 'force-dynamic';
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
-    const invoice = await prisma.invoice.findUnique({
-      where: { id: parseInt(id) },
+    const invoice = await prisma.invoice.findFirst({
+      where: { id: parseInt(id), isDeleted: false },
       include: {
         items: { include: { product: true } },
         person: true,
@@ -257,8 +257,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
         }
       });
       
-      // 3. DELETE INVOICE
-      await tx.invoice.delete({ where: { id: invoiceId } });
+      // 3. SOFT DELETE INVOICE
+      await tx.invoice.update({ 
+        where: { id: invoiceId },
+        data: { isDeleted: true, deletedAt: new Date() }
+      });
 
       return { success: true };
     });

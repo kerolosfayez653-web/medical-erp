@@ -19,7 +19,7 @@ export async function GET(
 
     // Get all invoices for this person
     const invoices = await prisma.invoice.findMany({
-      where: { personId },
+      where: { personId, isDeleted: false },
       include: {
         items: {
           include: { product: { select: { name: true, unit: true, secondaryUnit: true, conversionFactor: true } } }
@@ -30,7 +30,7 @@ export async function GET(
 
     // Get all payments
     const payments = await prisma.payment.findMany({
-      where: { personId },
+      where: { personId, isDeleted: false },
       orderBy: { date: 'asc' }
     });
 

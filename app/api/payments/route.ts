@@ -22,6 +22,7 @@ export async function GET(request: Request) {
     }
 
     const payments = await prisma.payment.findMany({
+      where: { isDeleted: false },
       include: { 
         person: true,
         invoice: {
@@ -174,7 +175,10 @@ export async function DELETE(request: Request) {
         }
       }
 
-      return await tx.payment.delete({ where: { id: Number(id) } });
+      return await tx.payment.update({ 
+        where: { id: Number(id) },
+        data: { isDeleted: true, deletedAt: new Date() }
+      });
     });
 
     return NextResponse.json({ success: true, data: result });
