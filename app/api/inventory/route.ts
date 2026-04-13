@@ -49,6 +49,10 @@ export async function GET() {
       const grossProfit = salesRevenue - cogs;
       const avgSellPrice = soldQty > 0 ? salesRevenue / soldQty : 0;
 
+      const lastPurchaseItem = allPurchases.sort((a, b) => 
+        new Date(b.invoice.date).getTime() - new Date(a.invoice.date).getTime()
+      )[0];
+
       return {
         id: p.id,
         name: p.name,
@@ -70,7 +74,8 @@ export async function GET() {
         secondaryUnit: p.secondaryUnit,
         conversionFactor: p.conversionFactor,
         secondaryPrice: p.secondaryPrice,
-        lastSellPrice: p.lastSellPrice || (allSales[0]?.price || 0)
+        lastSellPrice: p.lastSellPrice || (allSales[0]?.price || 0),
+        lastPurchasePrice: lastPurchaseItem?.price || 0
       };
     });
 

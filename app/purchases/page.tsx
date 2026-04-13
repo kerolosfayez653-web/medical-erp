@@ -89,7 +89,7 @@ export default function PurchasesPage() {
       setCart([...cart, {
         productId: product.id,
         name: product.name,
-        price: product.weightedAvgCost || 0,
+        price: product.lastPurchasePrice || product.weightedAvgCost || 0,
         sellingPrice: 0,
         quantity: 1,
         unitType: 'PRIMARY',
