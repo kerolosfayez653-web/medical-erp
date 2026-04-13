@@ -1,5 +1,5 @@
-"use client";
 import { useState, useEffect } from 'react';
+import ExportBtn from '@/components/ExportBtn';
 
 interface Person {
   id: number;
@@ -87,9 +87,7 @@ export default function PeoplePage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
         <h1 style={{ marginBottom: 0 }}>دليل العملاء والموردين</h1>
-        <button onClick={() => window.location.href='/api/export?type=people'} className="btn" style={{ background: '#10b981', color: 'white' }}>
-          📊 تصدير إكسيل
-        </button>
+        <ExportBtn type="people" label="📊 تصدير إكسيل" />
       </div>
       
       <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>

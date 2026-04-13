@@ -1,5 +1,5 @@
-"use client";
 import React, { useState, useEffect, use } from "react";
+import ExportBtn from "@/components/ExportBtn";
 
 interface StatementEntry {
   date: string;
@@ -160,9 +160,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
           </div>
         </div>
         <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }} className="no-print">
-          <button onClick={() => window.location.href=`/api/export?type=statement&personId=${id}`} className="btn" style={{ background: '#10b981', color: 'white', padding: "10px 16px", borderRadius: "8px", border: "none", cursor: "pointer" }}>
-            📊 تصدير إكسيل
-          </button>
+          <ExportBtn type="statement" params={{ personId: id.toString() }} label="📊 تصدير إكسيل" />
           <button onClick={handlePrint} className="btn" style={{ background: '#3b82f6', color: 'white', border: 'none' }}>
             🖨️ طباعة الكشف
           </button>

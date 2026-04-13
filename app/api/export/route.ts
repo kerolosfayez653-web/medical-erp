@@ -40,13 +40,13 @@ export async function GET(request: Request) {
       fileName = 'العملاء_والموردين.xlsx';
       sheetName = 'الأرصدة';
       data = people.map(p => ({
-        'الاسم': p.name,
+        'الاسم': p.name || 'بدون اسم',
         'النوع': p.type === 'CUSTOMER' ? 'عميل' : 'مورد',
         'التليفون': p.phone || '',
         'العنوان': p.address || '',
-        'رصيد أول المدة': p.initialBalance,
-        'الرصيد الحالي': p.currentBalance,
-        'آخر تحديث': p.updatedAt.toLocaleDateString('ar-EG')
+        'رصيد أول المدة': p.initialBalance || 0,
+        'الرصيد الحالي': p.currentBalance || 0,
+        'آخر تحديث': p.updatedAt ? p.updatedAt.toLocaleDateString('ar-EG') : ''
       }));
     } 
     else if (type === 'inventory') {
@@ -65,46 +65,67 @@ export async function GET(request: Request) {
 
       fileName = 'جرد_المستودع.xlsx';
       sheetName = 'المخزن';
-      // Fix: Use Promise.all with async map to correctly handle database queries during build
-      data = await Promise.all(products.map(async (p) => {
-        const pPurchased = (await prisma.invoiceItem.aggregate({
-          where: { productId: p.id, invoice: { type: 'PURCHASES' } },
-          _sum: { quantity: true }
-        }))._sum.quantity || 0;
-        const totalQty = p.openingQty + pPurchased - (salesMap.get(p.id) || 0);
+      
+      // Pre-fetch all purchased quantities in one go to optimize
+      const purchaseAgg = await prisma.invoiceItem.groupBy({
+        by: ['productId'],
+        where: { invoice: { type: 'PURCHASES' } },
+        _sum: { quantity: true }
+      });
+      const purchaseMap = new Map(purchaseAgg.map(i => [i.productId, i._sum.quantity || 0]));
+
+      data = products.map((p) => {
+        const pPurchased = purchaseMap.get(p.id) || 0;
+        const totalQty = (p.openingQty || 0) + pPurchased - (salesMap.get(p.id) || 0);
         const wac = wacMap.get(p.id) || 0;
         return {
-          'اسم الصنف': p.name,
+          'اسم الصنف': p.name || 'صنف غير مسمى',
           'الباركود': p.barcode || '',
           'الفئة': p.category || '',
           'الكمية المتوفرة': totalQty,
           'الوحدة': p.unit || '',
-          'متوسط التكلفة (WAC)': wac,
-          'إجمالي القيمة': totalQty * wac
+          'متوسط التكلفة (WAC)': Number(wac.toFixed(2)),
+          'إجمالي القيمة': Number((totalQty * wac).toFixed(2))
         };
-      }));
-      // Optimization: Promise.all for mapping if needed, but for export it's okay.
+      });
     }
     else if (type === 'invoices') {
       const invType = searchParams.get('invType');
       const invoices = await prisma.invoice.findMany({
-        where: invType ? { type: invType as any } : {},
+        where: invType && invType !== 'ALL' ? { type: invType as any } : {},
         include: { person: { select: { name: true } } },
         orderBy: { date: 'desc' }
       });
-      fileName = invType === 'SALES' ? 'سجل_المبيعات.xlsx' : 'سجل_المشتريات.xlsx';
+      fileName = invType === 'SALES' ? 'سجل_المبيعات.xlsx' : invType === 'PURCHASES' ? 'سجل_المشتريات.xlsx' : 'سجل_الفواتير.xlsx';
       sheetName = 'الفواتير';
       data = invoices.map(inv => ({
-        'رقم الفاتورة': inv.invoiceNumber || inv.id,
-        'التاريخ': inv.date.toLocaleDateString('ar-EG'),
+        'رقم الفاتورة': inv.invoiceNumber || inv.id.toString(),
+        'التاريخ': inv.date ? inv.date.toLocaleDateString('ar-EG') : '',
         'العميل/المورد': inv.person?.name || 'غير محدد',
-        'الإجمالي': inv.totalAmount,
+        'الإجمالي': inv.totalAmount || 0,
         'الخصم': inv.discount || 0,
         'التوصيل': inv.deliveryFee || 0,
-        'الصافي': inv.netAmount,
-        'المدفوع': inv.paidAmount,
+        'الصافي': inv.netAmount || 0,
+        'المدفوع': inv.paidAmount || 0,
         'الحالة': inv.paymentStatus === 'CASH' ? 'مسدد' : 'آجل',
         'طريقة السداد': inv.paymentMethod || ''
+      }));
+    }
+    else if (type === 'quotations') {
+      const quotations = await prisma.quotation.findMany({
+        include: { person: { select: { name: true } } },
+        orderBy: { date: 'desc' }
+      });
+      fileName = 'عروض_الأسعار.xlsx';
+      sheetName = 'العروض';
+      data = quotations.map(q => ({
+        'رقم العرض': q.quotationNumber || q.id.toString(),
+        'التاريخ': q.date ? q.date.toLocaleDateString('ar-EG') : '',
+        'العميل': q.person?.name || 'عميل عام',
+        'الإجمالي': q.totalAmount || 0,
+        'الخصم': q.discount || 0,
+        'الصافي': q.netAmount || 0,
+        'ملاحظات': q.notes || ''
       }));
     }
     else if (type === 'statement' && personId) {
@@ -116,9 +137,15 @@ export async function GET(request: Request) {
       const payments = await prisma.payment.findMany({ where: { personId: pId }, orderBy: { date: 'asc' } });
 
       const entries: any[] = [];
-      let runningBalance = person.initialBalance;
+      let runningBalance = person.initialBalance || 0;
 
-      entries.push({ 'التاريخ': 'سابق', 'البيان': 'رصيد أول المدة', 'مدين': person.initialBalance > 0 ? person.initialBalance : 0, 'دائن': person.initialBalance < 0 ? Math.abs(person.initialBalance) : 0, 'الرصيد': runningBalance });
+      entries.push({ 
+        'التاريخ': 'سابق', 
+        'البيان': 'رصيد أول المدة', 
+        'مدين': runningBalance > 0 ? runningBalance : 0, 
+        'دائن': runningBalance < 0 ? Math.abs(runningBalance) : 0, 
+        'الرصيد': runningBalance 
+      });
 
       const allEvents = [
         ...invoices.map(inv => ({ date: inv.date, type: 'INV', data: inv })),
@@ -140,7 +167,7 @@ export async function GET(request: Request) {
         }
         runningBalance += (debit - credit);
         entries.push({
-          'التاريخ': event.date.toLocaleDateString('ar-EG'),
+          'التاريخ': event.date ? event.date.toLocaleDateString('ar-EG') : '',
           'البيان': desc,
           'مدين': debit,
           'دائن': credit,
@@ -148,17 +175,26 @@ export async function GET(request: Request) {
         });
       }
       data = entries;
-      fileName = `كشف_حساب_${person.name.replace(/\s+/g, '_')}.xlsx`;
+      fileName = `كشف_حساب_${(person.name || 'عميل').replace(/\s+/g, '_')}.xlsx`;
       sheetName = 'كشف الحساب';
+    }
+
+    if (data.length === 0) {
+      // Return a basic sheet with a "No Data" message if empty
+      data = [{ 'تنبيه': 'لا توجد بيانات متاحة لهذا التقرير حالياً' }];
     }
 
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.json_to_sheet(data);
-    ws['!dir'] = 'rtl';
+    
+    // Attempt Right-to-Left (Note: Support varies by XLSX reader)
+    if (!ws['!views']) ws['!views'] = [];
+    ws['!views'].push({ RTL: true });
+    
     XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    
     const buf = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
 
-    // Fix: Professional header formatting for Arabic filenames
     return new Response(buf, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -169,9 +205,12 @@ export async function GET(request: Request) {
 
   } catch (error) {
     console.error('Export error details:', error);
-    return NextResponse.json({ 
+    return new Response(JSON.stringify({ 
       success: false, 
-      error: 'خطأ أثناء تصدير البيانات: ' + String(error) 
-    }, { status: 500 });
+      error: 'خطأ أثناء تصدير البيانات: ' + (error instanceof Error ? error.message : String(error)) 
+    }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }

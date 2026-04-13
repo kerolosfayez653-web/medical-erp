@@ -1,6 +1,6 @@
-"use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import ExportBtn from "@/components/ExportBtn";
 
 function fmt(n: number) {
   return n.toLocaleString("ar-EG", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -21,7 +21,10 @@ export default function QuotationsListPage() {
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1>📋 سجل عروض الأسعار</h1>
-        <Link href="/quotations" className="btn btn-primary">➕ عرض سعر جديد</Link>
+        <div style={{ display: 'flex', gap: '1rem' }}>
+          <ExportBtn type="quotations" label="📊 تصدير إكسيل" />
+          <Link href="/quotations" className="btn btn-primary">➕ عرض سعر جديد</Link>
+        </div>
       </div>
 
       <div className="glass-panel">

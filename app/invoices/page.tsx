@@ -1,5 +1,5 @@
-"use client";
 import React, { useState, useEffect } from 'react';
+import ExportBtn from '@/components/ExportBtn';
 
 export default function InvoicesHistoryPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -99,9 +99,7 @@ export default function InvoicesHistoryPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
           <h1 className="gradient-text" style={{ margin: 0 }}>سجل الفواتير</h1>
           <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <button onClick={() => window.location.href=`/api/export?type=invoices&invType=${filterType}`} className="btn" style={{ background: '#10b981', color: 'white' }}>
-              📊 إكسيل
-            </button>
+            <ExportBtn type="invoices" params={{ invType: filterType }} />
             <button onClick={() => window.print()} className="btn" style={{ background: '#f43f5e', color: 'white' }}>
               📄 تصدير PDF
             </button>

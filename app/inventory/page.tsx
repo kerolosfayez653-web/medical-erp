@@ -1,5 +1,5 @@
-"use client";
 import { useState, useEffect } from 'react';
+import ExportBtn from '@/components/ExportBtn';
 
 interface Product {
   id: number;
@@ -159,9 +159,7 @@ export default function InventoryPage() {
           {/* Filters */}
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-              <button onClick={() => window.location.href='/api/export?type=inventory'} className="btn" style={{ background: '#10b981', color: 'white' }}>
-                📊 تصدير إكسيل
-              </button>
+              <ExportBtn type="inventory" label="📊 تصدير إكسيل" />
               <h3 style={{ margin: 0 }}>دليل الأصناف ({filtered.length} صنف)</h3>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
