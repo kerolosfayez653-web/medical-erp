@@ -54,9 +54,11 @@ export default function QuotationsListPage() {
                         {q.status === 'PENDING' ? 'قيد الانتظار' : q.status}
                       </span>
                     </td>
-                    <td style={{ padding: '12px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
-                       <button className="btn btn-sm" onClick={() => window.open(`/api/quotations/${q.id}/print`)}>🖨️ طباعة</button>
-                    </td>
+                      <td style={{ padding: '12px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                         <button className="btn btn-sm" onClick={() => window.open(`/quotations/${q.id}/print`, '_blank')}>🖨️ طباعة</button>
+                         <button className="btn btn-sm btn-convert" onClick={() => window.location.href = `/sales?fromQuotation=${q.id}`}>🔄 تحويل لفاتورة</button>
+                      </td>
+
                   </tr>
                 ))}
               </tbody>
@@ -72,6 +74,9 @@ export default function QuotationsListPage() {
         .status-badge.pending { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
         .table-responsive { overflow-x: auto; }
         .btn-sm { padding: 4px 8px; font-size: 0.8rem; background: rgba(255,255,255,0.05); }
+        .btn-convert { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+        .btn-convert:hover { background: #10b981; color: #fff; }
+
       `}</style>
     </div>
   );

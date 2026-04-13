@@ -42,7 +42,32 @@ export default function NewQuotationPage() {
     fetch("/api/people").then(r => r.json()).then(d => {
       if (d.success) setCustomers(d.data.filter((p: any) => p.type === "CUSTOMER"));
     });
+
+    const draft = localStorage.getItem("draft_quotation");
+    if (draft) {
+      try {
+        const data = JSON.parse(draft);
+        if (data.cart) setCart(data.cart);
+        if (data.selectedCustomerId) {
+          setSelectedCustomerId(data.selectedCustomerId);
+          setCustSearch(data.custSearch || "");
+        }
+        if (data.discount) setDiscount(data.discount);
+        if (data.deliveryFee) setDeliveryFee(data.deliveryFee);
+        if (data.notes) setNotes(data.notes);
+        if (data.expiryDate) setExpiryDate(data.expiryDate);
+      } catch (e) { console.error("Error restoring quotation draft", e); }
+    }
   }, []);
+
+
+  useEffect(() => {
+    if (cart.length > 0 || selectedCustomerId || discount !== "0" || deliveryFee !== "0" || notes || expiryDate) {
+      const data = { cart, selectedCustomerId, custSearch, discount, deliveryFee, notes, expiryDate };
+      localStorage.setItem("draft_quotation", JSON.stringify(data));
+    }
+  }, [cart, selectedCustomerId, custSearch, discount, deliveryFee, notes, expiryDate]);
+
 
   const selectedCustomer = customers.find(c => String(c.id) === selectedCustomerId) || null;
   const filteredCustomersList = customers.filter(c => 
@@ -101,8 +126,10 @@ export default function NewQuotationPage() {
     if (res.ok) {
       const data = await res.json();
       setLastQuotationId(data.data.id);
+      localStorage.removeItem("draft_quotation");
       
       setCart([]);
+
       setDiscount("0");
       setDeliveryFee("0");
       setNotes("");
@@ -313,8 +340,9 @@ export default function NewQuotationPage() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '1.5rem' }}>
               <button 
                 className="btn btn-primary"
-                onClick={() => window.open(`/api/quotations/${lastQuotationId}/print`)}
+                onClick={() => window.open(`/quotations/${lastQuotationId}/print`, '_blank')}
               >
+
                 🖨️ طباعة عرض السعر
               </button>
               <button 

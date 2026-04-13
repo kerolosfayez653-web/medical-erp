@@ -78,10 +78,16 @@ export default async function Home() {
       </div>
       
       <div className="stats-grid" style={{ marginTop: '1rem' }}>
+        <a href="/reports" className="stat-card clickable-card" style={{ borderTop: '6px solid #8b5cf6', background: 'rgba(139, 92, 246, 0.08)', textDecoration: 'none' }}>
+          <span className="stat-title" style={{ fontWeight: 'bold' }}>مجمل الربح (Gross Profit) 📈</span>
+          <span className="stat-value" style={{ color: '#8b5cf6' }}>{grossProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ج.م</span>
+          <small style={{ color: 'var(--text-secondary)' }}>المبيعات - تكلفة البضاعة المباعة</small>
+        </a>
         <a href="/reports" className="stat-card clickable-card" style={{ borderTop: '6px solid var(--success-color)', background: 'rgba(16, 185, 129, 0.08)', textDecoration: 'none' }}>
           <span className="stat-title" style={{ fontWeight: 'bold' }}>صافي الربح الحقيقي 💰</span>
-          <span className="stat-value" style={{ color: 'var(--success-color)' }}>{netProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ج.م</span>
+          <span className="stat-value" style={{ color: 'var(--success-color)' }}>{netProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ج.m</span>
         </a>
+
         <a href="/people?filter=DEBT" className="stat-card clickable-card" style={{ borderTop: '4px solid var(--danger-color)', textDecoration: 'none' }}>
           <span className="stat-title">مستحقات (عند العملاء)</span>
           <span className="stat-value" style={{ color: 'var(--danger-color)' }}>{positiveDebts.toLocaleString('en-US')} ج.م</span>

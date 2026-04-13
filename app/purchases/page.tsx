@@ -49,7 +49,31 @@ export default function PurchasesPage() {
     fetch("/api/people").then(r => r.json()).then(d => {
       if (d.success) setSuppliers(d.data.filter((p: any) => p.type === "SUPPLIER"));
     });
+
+    const draft = localStorage.getItem("draft_purchase");
+    if (draft) {
+      try {
+        const data = JSON.parse(draft);
+        if (data.cart) setCart(data.cart);
+        if (data.selectedSupplierId) {
+          setSelectedSupplierId(data.selectedSupplierId);
+          setSuppSearch(data.suppSearch || "");
+        }
+        if (data.discount) setDiscount(data.discount);
+        if (data.deliveryFee) setDeliveryFee(data.deliveryFee);
+        if (data.paidAmount) setPaidAmount(data.paidAmount);
+      } catch (e) { console.error("Error restoring purchase draft", e); }
+    }
   }, []);
+
+  useEffect(() => {
+
+    if (cart.length > 0 || selectedSupplierId || discount !== "0" || deliveryFee !== "0" || paidAmount !== "0") {
+      const data = { cart, selectedSupplierId, suppSearch, discount, deliveryFee, paidAmount };
+      localStorage.setItem("draft_purchase", JSON.stringify(data));
+    }
+  }, [cart, selectedSupplierId, suppSearch, discount, deliveryFee, paidAmount]);
+
 
   const selectedSupplier = suppliers.find(s => String(s.id) === selectedSupplierId) || null;
   const filteredSuppliersList = suppliers.filter(s => 
@@ -98,7 +122,9 @@ export default function PurchasesPage() {
     });
     if (res.ok) {
       alert("✅ تم تسجيل المشتريات في المستودع بنجاح!");
+      localStorage.removeItem("draft_purchase");
       setCart([]);
+
       setPaidAmount("0");
       setDiscount("0");
       setDeliveryFee("0");
