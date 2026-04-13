@@ -7,14 +7,22 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const body = await request.json();
     const { unit, secondaryUnit, conversionFactor, secondaryPrice } = body;
 
+    // Build the update data object safely
+    const data: any = {};
+    if (typeof unit === 'string') data.unit = unit;
+    if (typeof secondaryUnit === 'string') data.secondaryUnit = secondaryUnit;
+    
+    const cFactor = Number(conversionFactor);
+    if (!isNaN(cFactor)) data.conversionFactor = Math.floor(cFactor);
+    
+    if (secondaryPrice !== undefined && secondaryPrice !== null) {
+      const sPrice = Number(secondaryPrice);
+      if (!isNaN(sPrice)) data.secondaryPrice = sPrice;
+    }
+
     const updated = await prisma.product.update({
       where: { id: parseInt(id) },
-      data: {
-        unit: typeof unit === 'string' ? unit : undefined,
-        secondaryUnit: typeof secondaryUnit === 'string' ? secondaryUnit : undefined,
-        conversionFactor: typeof conversionFactor === 'number' ? conversionFactor : undefined,
-        secondaryPrice: typeof secondaryPrice === 'number' ? secondaryPrice : undefined,
-      }
+      data
     });
 
     return NextResponse.json({ success: true, data: updated });
