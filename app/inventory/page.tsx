@@ -493,8 +493,14 @@ export default function InventoryPage() {
                       setEditingProduct(null);
                       alert('✅ تم حفظ التعديلات بنجاح');
                       window.location.reload();
+                    } else {
+                      const errMsg = result.error || result.message || 'فشل الحفظ لسبب غير معروف';
+                      alert(`❌ فشل الحفظ: ${errMsg}`);
                     }
-                  } catch (e) { console.error(e); }
+                  } catch (e) { 
+                    console.error('Save error:', e); 
+                    alert('❌ حدث خطأ تقني أثناء محاولة الحفظ. يرجى مراجعة الاتصال بالإنترنت.');
+                  }
                   setSubmitting(false);
                 }}
                 className="btn btn-primary"
