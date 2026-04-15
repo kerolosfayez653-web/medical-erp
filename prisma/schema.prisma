@@ -26,6 +26,9 @@ model Product {
   // بيانات 1/1/2026 من الإكسيل
   openingQty          Float          @default(0) 
   openingWeightedAvg  Float          @default(0) 
+  secondaryPrice      Float?         // سعر بيع الوحدة الصغرى
+  lastSellPrice       Float?         // آخر سعر بيع مسجل
+  lastPurchasePrice   Float?         // آخر سعر شراء مسجل
   
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
@@ -91,6 +94,8 @@ model Invoice {
   logs          InvoiceLog[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
 }
 
 // سجل تعديلات الفواتير
@@ -140,6 +145,8 @@ model Payment {
   method        String?   // "كاش", "انستاباي", "اكسيس باي"
   date          DateTime  @default(now())
   notes         String?
+  isDeleted     Boolean   @default(false)
+  deletedAt     DateTime?
 }
 // المصروفات
 model Expense {
@@ -189,4 +196,14 @@ model QuotationItem {
   unitType        String        @default("PRIMARY")
   price           Float         // سعر الوحدة المتفق عليه في العرض
   total           Float         // quantity * price
+}
+
+// المحافظ المالية (خزينة، انستاباي، إلخ)
+model Wallet {
+  id              Int      @id @default(autoincrement())
+  name            String   @unique
+  openingBalance  Float    @default(0)
+  currentBalance  Float    @default(0)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 }
