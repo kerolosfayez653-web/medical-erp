@@ -31,5 +31,6 @@ export const authConfig = {
       return true;
     },
   },
+  secret: process.env.AUTH_SECRET, // Explicitly pass secret for production
   providers: [], // Add empty providers list for edge compatibility
 } satisfies NextAuthConfig;
