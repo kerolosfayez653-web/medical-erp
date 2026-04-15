@@ -174,7 +174,8 @@ function SalesPageContent() {
       setSelectedCustomerId("");
       fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
     } else {
-      alert("❌ حدث خطأ أثناء حفظ الفاتورة");
+      const errorData = await res.json();
+      alert(`❌ حدث خطأ: ${errorData.error || errorData.details || "غير معروف"}`);
     }
     setLoading(false);
   };
