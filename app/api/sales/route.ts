@@ -20,9 +20,15 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { personId, items, paidAmount, type, discount = 0, deliveryFee = 0, paymentMethod } = body;
 
+    // Validate person
+    const person = await prisma.person.findUnique({ where: { id: Number(personId) } });
+    if (!person) {
+        return NextResponse.json({ success: false, error: 'العميل غير موجود. برجاء تحديث الصفحة (Refresh).' }, { status: 400 });
+    }
+
     let itemsTotal = 0;
     for (const item of items) {
-      itemsTotal += item.price * item.quantity;
+      itemsTotal += Number(item.price) * Number(item.quantity);
     }
 
     const total = itemsTotal + parseFloat(deliveryFee) - parseFloat(discount);
@@ -47,7 +53,7 @@ export async function POST(request: Request) {
         data: {
           type: type || 'SALES',
           invoiceNumber,
-          personId: personId ? Number(personId) : null,
+          personId: Number(personId),
           totalAmount: itemsTotal,
           netAmount: total,
           paidAmount: parseFloat(paidAmount) || 0,
@@ -76,15 +82,13 @@ export async function POST(request: Request) {
       });
 
       // 2. Update Person Balance (الديون)
-      if (personId) {
-        await tx.person.update({
-          where: { id: Number(personId) },
-          data: { currentBalance: { increment: remaining } }
-        });
-      }
+      await tx.person.update({
+        where: { id: Number(personId) },
+        data: { currentBalance: { increment: remaining } }
+      });
 
       // 3. Add Payment Record (سند القبض)
-      if (paidAmount > 0 && personId) {
+      if (paidAmount > 0) {
         await tx.payment.create({
           data: {
             personId: Number(personId),
@@ -121,7 +125,6 @@ export async function POST(request: Request) {
             qtyNeeded -= deduction;
           }
         } else if (qtyNeeded < 0) {
-          // It's a return: add back to the first available lot
           const firstLot = await tx.inventoryLot.findFirst({
             where: { productId: product.id },
             orderBy: { expiryDate: 'asc' }
@@ -135,7 +138,6 @@ export async function POST(request: Request) {
           }
         }
 
-        // If still qtyNeeded > 0, create a deficit lot (optional but consistent with current logic)
         if (qtyNeeded > 0) {
            await tx.inventoryLot.create({
              data: {
@@ -154,8 +156,8 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({ success: true, data: result, invoiceNumber });
-  } catch (error) {
+  } catch (error: any) {
     console.error('Invoice Error: ', error);
-    return NextResponse.json({ error: 'Server error', details: String(error) }, { status: 500 });
+    return NextResponse.json({ success: false, error: 'Server error', details: error.message }, { status: 500 });
   }
 }
