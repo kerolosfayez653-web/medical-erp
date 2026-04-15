@@ -18,12 +18,23 @@ async function generateSalesInvoiceNumber(): Promise<string> {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { personId, items, paidAmount, type, discount = 0, deliveryFee = 0, paymentMethod } = body;
+    const { personId, items, paidAmount, type, discount = 0, deliveryFee = 0, paymentMethod, personPhone, personAddress } = body;
 
-    // Validate person
+    // Validate and Update person contact info if provided
     const person = await prisma.person.findUnique({ where: { id: Number(personId) } });
     if (!person) {
         return NextResponse.json({ success: false, error: 'العميل غير موجود. برجاء تحديث الصفحة (Refresh).' }, { status: 400 });
+    }
+
+    // Update person info if changed
+    if ((personPhone && personPhone !== person.phone) || (personAddress && personAddress !== person.address)) {
+      await prisma.person.update({
+        where: { id: Number(personId) },
+        data: {
+          phone: personPhone || person.phone,
+          address: personAddress || person.address
+        }
+      });
     }
 
     let itemsTotal = 0;

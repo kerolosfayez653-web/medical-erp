@@ -177,13 +177,10 @@ export default function PrintInvoicePage() {
         <div style={{ display: 'flex', alignItems: 'center', marginLeft: '50px' }}>
           {(invoice.netAmount - (invoice.paidAmount || 0) > 0.1) && (
             <div style={{ textAlign: 'center' }}>
-              <div 
+              <a 
                 className="no-print"
-                onClick={() => {
-                   const origin = (typeof window !== 'undefined' ? window.location.origin : '') || 'https://medical-erp-sable.vercel.app';
-                   window.location.href = `${origin}/pay/${invoice.id}`;
-                }}
-                style={{ cursor: 'pointer', transition: 'transform 0.2s ease' }}
+                href={`https://medical-erp-sable.vercel.app/pay/${invoice.id}`}
+                style={{ cursor: 'pointer', transition: 'transform 0.2s ease', display: 'block', textDecoration: 'none' }}
                 onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
                 onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
               >
@@ -192,15 +189,21 @@ export default function PrintInvoicePage() {
                   alt="Payment QR" 
                   style={{ width: '100px', height: '100px', border: '1px solid #7c3aed', padding: '5px', borderRadius: '8px', background: '#fff' }}
                 />
-              </div>
-              {/* Only for actual print, static image */}
-              <img 
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://medical-erp-sable.vercel.app/pay/${invoice.id}`)}`} 
-                alt="Payment QR" 
-                style={{ width: '100px', height: '100px', border: '1px solid #7c3aed', padding: '5px', borderRadius: '8px', background: '#fff' }}
+                <div style={{ fontSize: '10px', marginTop: '5px', color: '#7c3aed', fontWeight: 'bold' }}>مسح للملخص والدفع 📱</div>
+              </a>
+              {/* Only for actual print/PDF, using anchor tag for clickability */}
+              <a 
+                href={`https://medical-erp-sable.vercel.app/pay/${invoice.id}`}
                 className="only-print"
-              />
-              <div style={{ fontSize: '10px', marginTop: '5px', color: '#7c3aed', fontWeight: 'bold' }}>مسح للملخص والدفع 📱</div>
+                style={{ textDecoration: 'none' }}
+              >
+                <img 
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://medical-erp-sable.vercel.app/pay/${invoice.id}`)}`} 
+                  alt="Payment QR" 
+                  style={{ width: '100px', height: '100px', border: '1px solid #7c3aed', padding: '5px', borderRadius: '8px', background: '#fff' }}
+                />
+                <div style={{ fontSize: '10px', marginTop: '5px', color: '#7c3aed', fontWeight: 'bold' }}>مسح للملخص والدفع 📱</div>
+              </a>
             </div>
           )}
         </div>
@@ -225,6 +228,30 @@ export default function PrintInvoicePage() {
           <div className="total-row total-final">
             <span>الصافي المطلوب:</span>
             <span>{fmt(invoice.netAmount)} ج.م</span>
+          </div>
+        </div>
+      </div>
+
+      <div style={{ marginTop: '10px', border: '1px solid #e5e7eb', borderRadius: '12px', padding: '15px', background: '#f9fafb' }}>
+        <h4 style={{ margin: '0 0 10px 0', color: '#7c3aed', fontSize: '14px', borderBottom: '1px solid #e5e7eb', paddingBottom: '5px' }}>📊 ملخص الحساب (المديونية الإجمالية):</h4>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>الرصيد السابق (مديونية قديمة)</div>
+            <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#374151' }}>
+              {fmt((invoice.person?.currentBalance || 0) - (invoice.netAmount - invoice.paidAmount))} ج.م
+            </div>
+          </div>
+          <div style={{ textAlign: 'center', borderLeft: '1px solid #e5e7eb', borderRight: '1px solid #e5e7eb' }}>
+            <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>صافي الفاتورة الحالية</div>
+            <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#374151' }}>
+              {fmt(invoice.netAmount)} ج.م
+            </div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: '11px', color: '#7c3aed', marginBottom: '4px', fontWeight: 'bold' }}>إجمالي المديونية المستحق</div>
+            <div style={{ fontWeight: '900', fontSize: '18px', color: '#7c3aed' }}>
+              {fmt(invoice.person?.currentBalance || 0)} ج.م
+            </div>
           </div>
         </div>
       </div>

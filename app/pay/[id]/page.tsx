@@ -99,15 +99,18 @@ export default function PaymentSummaryPage() {
 
         {/* Amount Box */}
         <div style={{ background: '#f5f3ff', borderRadius: '16px', padding: '1.2rem', marginBottom: '1.5rem', textAlign: 'center', border: '1px solid #ddd6fe' }}>
-          <div style={{ fontSize: '0.8rem', color: '#6d28d9', marginBottom: '5px', fontWeight: 'bold' }}>صافي المبلغ المطلوب دفعه</div>
-          <div style={{ fontSize: '2.2rem', fontWeight: '900', color: '#7c3aed', display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '6px' }}>
-            {fmt(invoice.netAmount - (invoice.paidAmount || 0))}
-            <span style={{ fontSize: '0.9rem' }}>ج.م</span>
+          <div style={{ fontSize: '0.8rem', color: '#6d28d9', marginBottom: '8px', fontWeight: 'bold' }}>إجمالي المديونية المستحق سدادها</div>
+          <div style={{ fontSize: '2.4rem', fontWeight: '900', color: '#7c3aed', display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '6px' }}>
+            {fmt(invoice.person?.currentBalance || 0)}
+            <span style={{ fontSize: '1rem' }}>ج.م</span>
+          </div>
+          <div style={{ marginTop: '10px', fontSize: '0.75rem', color: '#64748b', borderTop: '1px solid rgba(124, 58, 237, 0.1)', paddingTop: '8px' }}>
+             قيمة هذه الفاتورة: <b>{fmt(invoice.netAmount - (invoice.paidAmount || 0))} ج.م</b>
           </div>
         </div>
 
         {/* Action Button */}
-        {invoice.netAmount > (invoice.paidAmount || 0) ? (
+        {(invoice.person?.currentBalance || 0) > 0.1 ? (
           <button 
             onClick={() => {
               window.location.href = `https://ipn.eg/S/kerolosfayez555/instapay/912tFv`;
@@ -128,12 +131,12 @@ export default function PaymentSummaryPage() {
             onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
             onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
-            💳 سداد عبر إنستا باي (InstaPay)
+            💳 سداد المديونية عبر إنستا باي
           </button>
         ) : (
           <div style={{ padding: '1.5rem', background: '#ecfdf5', borderRadius: '16px', border: '1px solid #10b981', textAlign: 'center', color: '#065f46' }}>
             <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>✅</div>
-            <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>الفاتورة مسددة بالكامل</div>
+            <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>الحساب مسدد بالكامل</div>
             <p style={{ fontSize: '0.85rem', marginTop: '5px' }}>شكراً لتعاملكم مع 24MED</p>
           </div>
         )}

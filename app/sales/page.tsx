@@ -47,6 +47,8 @@ function SalesPageContent() {
   const [searchProduct, setSearchProduct] = useState("");
   const [lastInvoiceId, setLastInvoiceId] = useState<number | null>(null);
   const [custSearch, setCustSearch]       = useState("");
+  const [personPhone, setPersonPhone]     = useState("");
+  const [personAddress, setPersonAddress] = useState("");
   const [lastAddedId, setLastAddedId]     = useState<number | null>(null);
 
   const searchParams = useSearchParams();
@@ -84,7 +86,6 @@ function SalesPageContent() {
         }
       });
     } else {
-      // Restore draft if not coming from a quotation
       const draft = localStorage.getItem("draft_sale");
       if (draft) {
         try {
@@ -109,27 +110,56 @@ function SalesPageContent() {
     }
   }, [cart, selectedCustomerId, custSearch, discount, deliveryFee, paidAmount]);
 
+  useEffect(() => {
+    if (selectedCustomer) {
+      setPersonPhone(selectedCustomer.phone || "");
+      setPersonAddress(selectedCustomer.address || "");
+    } else {
+      setPersonPhone("");
+      setPersonAddress("");
+    }
+  }, [selectedCustomer]);
+
+  // Validate selected customer (clear if deleted/stale)
+  useEffect(() => {
+    if (customers.length > 0 && selectedCustomerId) {
+      const exists = customers.some(c => String(c.id) === selectedCustomerId);
+      if (!exists) {
+        console.warn("Customer ID not found in database, clearing stale selection.");
+        setSelectedCustomerId("");
+        setCustSearch("");
+      }
+    }
+  }, [customers, selectedCustomerId]);
 
   const selectedCustomer = customers.find(c => String(c.id) === selectedCustomerId) || null;
-  const filteredCustomersList = customers.filter(c => 
-    c.name.includes(custSearch) || (c.phone && c.phone.includes(custSearch))
-  );
+  const normalizeText = (text: string) => 
+    text?.toLowerCase()
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .trim() || "";
+
+  const filteredCustomersList = customers.filter(c => {
+    const search = normalizeText(custSearch);
+    return normalizeText(c.name).includes(search) || (c.phone && c.phone.includes(search));
+  });
 
   const addToCart = (product: Product) => {
     setLastAddedId(product.id);
     setTimeout(() => setLastAddedId(null), 800);
 
     const pId          = Number(product.id);
-    const currentPrice = typeof product.avgSellPrice === 'number' ? Number(product.avgSellPrice) : 0;
-    const factor       = Number(product.conversionFactor) || 1;
-    const sPrice       = typeof product.secondaryPrice === 'number' ? Number(product.secondaryPrice) : (currentPrice / factor);
+    const existing     = cart.find(i => Number(i.productId) === pId);
+    
+    if (existing) {
+      setCart(cart.map(i => Number(i.productId) === pId ? { ...i, quantity: i.quantity + 1 } : i));
+    } else {
+      const currentPrice = typeof product.avgSellPrice === 'number' ? Number(product.avgSellPrice) : 0;
+      const factor       = Number(product.conversionFactor) || 1;
+      const sPrice       = typeof product.secondaryPrice === 'number' ? Number(product.secondaryPrice) : (currentPrice / factor);
 
-    setCart(prev => {
-      const existing = prev.find(i => Number(i.productId) === pId);
-      if (existing) {
-        return prev.map(i => Number(i.productId) === pId ? { ...i, quantity: i.quantity + 1 } : i);
-      }
-      return [...prev, { 
+      setCart([...cart, { 
         productId: pId, 
         name: product.name, 
         price: currentPrice, 
@@ -141,8 +171,8 @@ function SalesPageContent() {
         conversionFactor: factor,
         primaryPrice: currentPrice,
         secondaryPrice: sPrice
-      }];
-    });
+      }]);
+    }
   };
 
   const itemsTotal     = cart.reduce((s, i) => s + i.price * i.quantity, 0);
@@ -159,7 +189,7 @@ function SalesPageContent() {
     const res = await fetch("/api/sales", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "SALES", personId: selectedCustomerId, items: cart, paidAmount: paid, discount: discountVal, deliveryFee: deliveryVal, paymentMethod }),
+      body: JSON.stringify({ type: "SALES", personId: selectedCustomerId, items: cart, paidAmount: paid, discount: discountVal, deliveryFee: deliveryVal, paymentMethod, personPhone, personAddress }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -167,7 +197,6 @@ function SalesPageContent() {
       localStorage.removeItem("draft_sale");
       
       setCart([]);
-
       setPaidAmount("0");
       setDiscount("0");
       setDeliveryFee("0");
@@ -189,7 +218,11 @@ function SalesPageContent() {
       <h1 style={{ marginBottom: "2rem" }}>فاتورة مبيعات جديدة</h1>
 
       <div className="split-layout">
+        
+        {/* ── Left Panel: Customer + Payment ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+          
+          {/* Customer Selector */}
           <div className="glass-panel">
             <h3 style={{ marginBottom: "1rem" }}>👤 بيانات العميل</h3>
             <div className="input-group" style={{ position: 'relative' }}>
@@ -202,129 +235,265 @@ function SalesPageContent() {
                   setCustSearch(e.target.value);
                   if (selectedCustomerId) setSelectedCustomerId("");
                 }}
+                onFocus={() => {
+                  if (selectedCustomer) setCustSearch("");
+                }}
                 className="input-field"
                 style={{ fontSize: '1rem', padding: '12px' }}
               />
               {custSearch && !selectedCustomerId && (
                 <div style={{ 
-                  position: 'absolute', top: '100%', left: 0, right: 0, 
-                  background: 'rgba(23, 23, 27, 0.98)', backdropFilter: 'blur(10px)',
-                  border: '1px solid var(--accent-color)', borderRadius: '12px',
-                  marginTop: '5px', zIndex: 9999, maxHeight: '200px', overflowY: 'auto'
+                    position: 'absolute', top: '100%', left: 0, right: 0, 
+                    background: 'rgba(23, 23, 27, 0.98)', backdropFilter: 'blur(10px)',
+                    border: '1px solid var(--accent-color)', borderRadius: '12px',
+                    marginTop: '5px', zIndex: 9999, maxHeight: '200px', overflowY: 'auto',
+                    boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
                 }}>
-                  {filteredCustomersList.map(c => (
-                    <div 
-                      key={c.id} 
-                      onClick={() => {
-                        setSelectedCustomerId(String(c.id));
-                        setCustSearch(c.name);
-                      }}
-                      style={{ padding: '12px', borderBottom: '1px solid rgba(255,255,255,0.05)', cursor: 'pointer' }}
-                    >
-                      <div style={{ fontWeight: 'bold' }}>{c.name}</div>
-                    </div>
-                  ))}
+                  {filteredCustomersList.length === 0 ? (
+                    <div style={{ padding: '12px', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>لا توجد نتائج</div>
+                  ) : (
+                    filteredCustomersList.map(c => (
+                      <div 
+                        key={c.id} 
+                        onClick={() => {
+                          setSelectedCustomerId(String(c.id));
+                          setCustSearch(c.name);
+                        }}
+                        style={{ 
+                          padding: '12px', 
+                          borderBottom: '1px solid rgba(255,255,255,0.05)', 
+                          cursor: 'pointer', 
+                          transition: '0.2s',
+                          color: '#fff'
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(16, 185, 129, 0.2)')}
+                        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                      >
+                        <div style={{ fontWeight: 'bold' }}>{c.name}</div>
+                        {c.phone && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>{c.phone}</div>}
+                      </div>
+                    ))
+                  )}
                 </div>
               )}
             </div>
+
+            {/* Customer Info Card */}
             {selectedCustomer && (
               <div style={{ marginTop: "1rem", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "10px", padding: "14px" }}>
-                <strong>{selectedCustomer.name}</strong>
-                <div>📞 {selectedCustomer.phone}</div>
+                <div style={{ fontWeight: "bold", fontSize: "1.05rem", marginBottom: "12px", color: "var(--accent-color)" }}>
+                  {selectedCustomer.name}
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem', opacity: 0.7, marginBottom: '2px' }}>📞 رقم الهاتف</label>
+                    <input 
+                      type="text" 
+                      placeholder="01xxxxxxxxx"
+                      value={personPhone} 
+                      onChange={e => setPersonPhone(e.target.value)} 
+                      className="input-field" 
+                      style={{ padding: '8px', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)' }} 
+                    />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem', opacity: 0.7, marginBottom: '2px' }}>📍 العنوان</label>
+                    <input 
+                      type="text" 
+                      placeholder="العنوان التفصيلي..."
+                      value={personAddress} 
+                      onChange={e => setPersonAddress(e.target.value)} 
+                      className="input-field" 
+                      style={{ padding: '8px', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)' }} 
+                    />
+                  </div>
+                </div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--success-color)', marginBottom: '8px', opacity: 0.8 }}>
+                  💡 سيتم حفظ البيانات في سجل العميل تلقائياً عند إصدار الفاتورة
+                </div>
+                {selectedCustomer.currentBalance !== 0 && (
+                  <div style={{ fontSize: "0.85rem", marginTop: "6px", padding: "4px 8px", background: "rgba(239,68,68,0.15)", borderRadius: "6px" }}>
+                    💳 مديونية حالية:{" "}
+                    <strong style={{ color: "var(--danger-color)" }}>
+                      {fmt(Math.abs(selectedCustomer.currentBalance))} ج.م
+                    </strong>
+                  </div>
+                )}
+                {selectedCustomer.lastInvoice && (
+                  <div style={{ marginTop: "8px", fontSize: "0.82rem", color: "var(--text-secondary)", borderTop: "1px solid rgba(255,255,255,0.06)", paddingTop: "8px" }}>
+                    آخر فاتورة:{" "}
+                    <strong style={{ color: "var(--text-primary)" }}>
+                      {fmt(selectedCustomer.lastInvoice.totalAmount)} ج.م
+                    </strong>
+                    {" · "}
+                    {new Date(selectedCustomer.lastInvoice.date).toLocaleDateString("ar-EG")}
+                  </div>
+                )}
               </div>
             )}
           </div>
 
+          {/* Payment */}
           <div className="glass-panel">
             <h3 style={{ marginBottom: "1rem" }}>💰 الدفع</h3>
+            
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.95rem" }}>
+              <span>إجمالي الأصناف:</span>
+              <span>{fmt(itemsTotal)} ج.م</span>
+            </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginBottom: "12px" }}>
               <div className="input-group">
                 <label>توصيل (+)</label>
-                <input type="number" step="0.01" value={deliveryFee} onChange={e => setDeliveryFee(e.target.value)} className="input-field" />
+                <input type="number" step="0.01" value={deliveryFee} onChange={e => setDeliveryFee(e.target.value)} className="input-field" style={{ padding: "6px" }} />
               </div>
               <div className="input-group">
                 <label>خصم (-)</label>
-                <input type="number" step="0.01" value={discount} onChange={e => setDiscount(e.target.value)} className="input-field" />
+                <input type="number" step="0.01" value={discount} onChange={e => setDiscount(e.target.value)} className="input-field" style={{ padding: "6px" }} />
               </div>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", fontSize: "1.2rem", fontWeight: "bold" }}>
+
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", fontSize: "1.2rem", fontWeight: "bold", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "8px" }}>
               <span>الصافي المطلوب:</span>
-              <span>{fmt(totalAmount)} ج.م</span>
+              <span style={{ color: "var(--text-primary)" }}>{fmt(totalAmount)} ج.م</span>
             </div>
+
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "10px", marginBottom: "12px" }}>
               <div className="input-group">
                 <label>المبلغ المدفوع</label>
-                <input type="number" step="0.01" value={paidAmount} onChange={e => setPaidAmount(e.target.value)} className="input-field" />
+                <input 
+                  type="number" step="0.01" value={paidAmount} 
+                  onChange={e => setPaidAmount(e.target.value)} 
+                  className="input-field" 
+                  style={{ borderColor: "var(--accent-color)", fontSize: "1.1rem" }}
+                />
               </div>
               <div className="input-group">
                 <label>وسيلة الدفع</label>
-                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="input-field">
+                <select value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)} className="input-field" style={{ padding: "6px" }}>
                   <option value="كاش">كاش</option>
                   <option value="انستاباي">انستاباي</option>
                   <option value="اكسيس باي">اكسيس باي</option>
                 </select>
               </div>
             </div>
-            <button onClick={submitInvoice} disabled={loading || cart.length === 0} className="btn btn-primary" style={{ width: "100%", padding: "16px" }}>
+
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "16px", color: remaining > 0 ? "var(--danger-color)" : "var(--success-color)" }}>
+              <span>{remaining > 0 ? "المتبقي (يسجل آجل):" : "✅ مدفوع بالكامل"}</span>
+              <strong>{remaining > 0 ? fmt(remaining) + " ج.م" : ""}</strong>
+            </div>
+
+            <button onClick={submitInvoice} disabled={loading || cart.length === 0} className="btn btn-primary" style={{ width: "100%", fontSize: "1.1rem", padding: "16px" }}>
               {loading ? "⏳ جاري التنفيذ..." : "✅ تأكيد وإصدار الفاتورة"}
             </button>
           </div>
         </div>
 
+        {/* ── Right Panel: Cart + Products ── */}
         <div>
+           {/* Cart Table */}
            {cart.length > 0 && (
-            <div className="glass-panel" style={{ marginBottom: "1.5rem" }}>
-              <h3 style={{ marginBottom: "1rem" }}>🛒 العناصر ({cart.length})</h3>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr style={{ background: "rgba(255,255,255,0.03)" }}>
-                    <th style={{ padding: "12px", textAlign: "right" }}>الصنف</th>
-                    <th style={{ padding: "12px" }}>الكمية</th>
-                    <th style={{ padding: "12px" }}>السعر</th>
-                    <th style={{ padding: "12px" }}>الإجمالي</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cart.map(item => (
-                    <tr key={item.productId} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", textAlign: "center" }}>
-                      <td style={{ padding: "12px", textAlign: "right" }}>{item.name}</td>
-                      <td style={{ padding: "12px" }}>
-                        <input type="number" value={item.quantity} onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseInt(e.target.value) || 1 } : i))} className="input-field" style={{ width: "60px", textAlign: "center" }} />
-                      </td>
-                      <td style={{ padding: "12px" }}>
-                        <input type="number" value={item.price} onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, price: parseFloat(e.target.value) || 0 } : i))} className="input-field" style={{ width: "80px", textAlign: "center" }} />
-                      </td>
-                      <td style={{ padding: "12px" }}>{fmt(item.price * item.quantity)}</td>
+            <div className="glass-panel" style={{ marginBottom: "1.5rem", border: "1px solid var(--accent-color)", padding: "16px" }}>
+              <h3 style={{ marginBottom: "1rem", color: "var(--accent-color)" }}>🛒 أصناف الفاتورة ({cart.length})</h3>
+              <div className="table-responsive">
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem", whiteSpace: "nowrap" }}>
+                  <thead>
+                    <tr style={{ background: "rgba(255,255,255,0.03)", textAlign: "center" }}>
+                      <th style={{ padding: "12px", textAlign: "right", color: 'var(--accent-color)' }}>الصنف</th>
+                      <th style={{ padding: "12px" }}>الكمية</th>
+                      <th style={{ padding: "12px" }}>السعر</th>
+                      <th style={{ padding: "12px" }}>الإجمالي</th>
+                      <th style={{ padding: "12px" }}>حذف</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {cart.map(item => (
+                      <tr key={item.productId} style={{ borderBottom: "1px solid rgba(255,255,255,0.05)", textAlign: "center" }}>
+                        <td style={{ padding: "12px", fontWeight: "bold", textAlign: "right" }}>{item.name}</td>
+                        <td style={{ padding: "12px" }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
+                            <input type="number" value={item.quantity} onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseInt(e.target.value) || 1 } : i))} className="input-field" style={{ width: "60px", textAlign: "center", padding: "4px" }} />
+                            <select 
+                              value={item.unitType}
+                              onChange={e => {
+                                const newType = e.target.value;
+                                const newPrice = newType === 'SECONDARY' ? item.secondaryPrice : item.primaryPrice;
+                                setCart(cart.map(i => i.productId === item.productId ? { ...i, unitType: newType, price: newPrice } : i));
+                              }}
+                              style={{ fontSize: '0.75rem', padding: '2px', background: 'rgba(255,255,255,0.05)', color: '#fff', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+                            >
+                              <option value="PRIMARY">{item.unit || 'وحدة'}</option>
+                              {item.secondaryUnit && <option value="SECONDARY">{item.secondaryUnit}</option>}
+                            </select>
+                          </div>
+                        </td>
+                        <td style={{ padding: "12px" }}>
+                          <input type="number" value={item.price} onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, price: parseFloat(e.target.value) || 0 } : i))} className="input-field" style={{ width: "80px", textAlign: "center", padding: "4px" }} />
+                        </td>
+                        <td style={{ padding: "12px", fontWeight: "bold", color: 'var(--success-color)' }}>{fmt(item.price * item.quantity)}</td>
+                        <td style={{ padding: "12px" }}>
+                          <button onClick={() => setCart(cart.filter(i => i.productId !== item.productId))}
+                            style={{ background: "transparent", color: "var(--danger-color)", border: "none", cursor: "pointer", fontSize: "1.2rem" }}>✕</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
 
+          {/* Product Catalog */}
           <div className="glass-panel">
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "1rem" }}>
-              <h3>📦 المنتجات</h3>
-              <input type="text" placeholder="بحث..." value={searchProduct} onChange={e => setSearchProduct(e.target.value)} className="input-field" style={{ width: "150px" }} />
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
+              <h3 style={{ margin: 0 }}>📦 الأصناف المتاحة</h3>
+              <input 
+                type="text" placeholder="🔍 بحث عن صنف..." 
+                value={searchProduct} onChange={e => setSearchProduct(e.target.value)} 
+                className="input-field" style={{ width: "180px" }} 
+              />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(140px, 1fr))", gap: "10px", maxHeight: "400px", overflowY: "auto" }}>
-              {filteredProducts.map(p => (
-                <div key={p.id} onClick={() => addToCart(p)} className="product-card" style={{ padding: '10px' }}>
-                  <strong>{p.name}</strong>
-                  <div style={{ fontSize: '0.8rem' }}>{p.avgSellPrice} ج.م</div>
-                </div>
-              ))}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px", maxHeight: "450px", overflowY: "auto" }}>
+              {filteredProducts.map(p => {
+                const inCart = cart.find(i => Number(i.productId) === Number(p.id));
+                const isJustAdded = lastAddedId === p.id;
+                return (
+                  <div 
+                    key={p.id} 
+                    onClick={() => addToCart(p)} 
+                    className={`product-card ${inCart ? 'in-cart' : ''}`}
+                    style={isJustAdded ? { transform: 'scale(0.9)', borderColor: 'var(--accent-color)', boxShadow: '0 0 20px var(--accent-color)' } : {}}
+                  >
+                    <strong style={{ display: "block", marginBottom: "6px", fontSize: "0.85rem", lineHeight: "1.3" }}>{p.name}</strong>
+                    <div style={{ fontSize: "0.78rem", color: "var(--accent-color)", fontWeight: "bold" }}>{p.avgSellPrice} ج.م</div>
+                    <div style={{ fontSize: "0.72rem", color: "var(--text-secondary)" }}>المخزون: {p.currentQty}</div>
+                    
+                    <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                       {inCart ? (
+                         <span style={{ fontSize: "0.72rem", color: "var(--accent-color)" }}>✓ ({inCart.quantity})</span>
+                       ) : (
+                         <span style={{ fontSize: "0.72rem", opacity: 0.6 }}>أضف للسلة</span>
+                       )}
+                       <span style={{ fontSize: '1.1rem', color: isJustAdded ? 'var(--success-color)' : 'var(--accent-color)' }}>{isJustAdded ? '✔' : '＋'}</span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>
       </div>
 
+       {/* Success Modal */}
        {lastInvoiceId && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-panel" style={{ textAlign: 'center' }}>
-             <h2>✅ تم الحفظ!</h2>
-             <button onClick={() => window.open(`/invoices/${lastInvoiceId}/print`, '_blank')} className="btn btn-primary">🖨️ طباعة</button>
-             <button onClick={() => setLastInvoiceId(null)} className="btn">إغلاق</button>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(10px)' }}>
+          <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem', border: '1px solid var(--accent-color)' }}>
+             <div style={{ fontSize: '4rem', marginBottom: '1rem' }}>✅</div>
+             <h2 style={{ marginBottom: '1rem' }}>تم حفظ الفاتورة بنجاح!</h2>
+             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', marginTop: '2rem' }}>
+               <button onClick={() => window.open(`/invoices/${lastInvoiceId}/print`, '_blank')} className="btn btn-primary" style={{ padding: '12px 30px' }}>🖨️ طباعة الفاتورة</button>
+               <button onClick={() => setLastInvoiceId(null)} className="btn" style={{ padding: '12px 30px' }}>إغلاق</button>
+             </div>
           </div>
         </div>
       )}
