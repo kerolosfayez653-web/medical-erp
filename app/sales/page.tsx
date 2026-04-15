@@ -51,24 +51,11 @@ function SalesPageContent() {
 
   const searchParams = useSearchParams();
   const fromQuotation = searchParams.get("fromQuotation");
-  const urlPersonId   = searchParams.get("personId");
 
   useEffect(() => {
     fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
     fetch("/api/people").then(r => r.json()).then(d => {
-      if (d.success) {
-        const custs = d.data.filter((p: any) => p.type === "CUSTOMER");
-        setCustomers(custs);
-        
-        // If personId is in URL, auto select
-        if (urlPersonId) {
-          const target = custs.find((c: any) => String(c.id) === urlPersonId);
-          if (target) {
-            setSelectedCustomerId(String(target.id));
-            setCustSearch(target.name);
-          }
-        }
-      }
+      if (d.success) setCustomers(d.data.filter((p: any) => p.type === "CUSTOMER"));
     });
 
     if (fromQuotation) {
@@ -294,7 +281,6 @@ function SalesPageContent() {
                     <th style={{ padding: "12px" }}>الكمية</th>
                     <th style={{ padding: "12px" }}>السعر</th>
                     <th style={{ padding: "12px" }}>الإجمالي</th>
-                    <th style={{ padding: "12px" }}>#</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -308,13 +294,6 @@ function SalesPageContent() {
                         <input type="number" value={item.price} onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, price: parseFloat(e.target.value) || 0 } : i))} className="input-field" style={{ width: "80px", textAlign: "center" }} />
                       </td>
                       <td style={{ padding: "12px" }}>{fmt(item.price * item.quantity)}</td>
-                      <td style={{ padding: "12px" }}>
-                        <button 
-                          onClick={() => setCart(cart.filter(i => i.productId !== item.productId))}
-                          style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem' }}
-                          title="حذف"
-                        >🗑️</button>
-                      </td>
                     </tr>
                   ))}
                 </tbody>

@@ -18,7 +18,6 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
     { path: '/expenses', label: '💰 المصروفات' },
     { path: '/reports', label: '📊 القوائم المالية والتقارير' },
     { path: '/import', label: '⬆️ استيراد البيانات' },
-    { path: '/trash', label: '🗑️ سلة المهملات' },
   ];
 
   return (

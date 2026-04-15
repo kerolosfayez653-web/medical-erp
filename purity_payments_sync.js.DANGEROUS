@@ -1,0 +1,135 @@
+const { PrismaClient } = require('@prisma/client');
+const xlsx = require('xlsx');
+
+const prisma = new PrismaClient();
+
+async function parseExcelDate(serialOrStr) {
+  if (!serialOrStr) return new Date();
+  if (typeof serialOrStr === 'number') {
+    const utcValue = Math.floor(serialOrStr - 25569) * 86400;
+    return new Date(utcValue * 1000);
+  }
+  const d = new Date(serialOrStr);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
+async function main() {
+  console.log('--- STARTING PAYMENT SYNCHRONIZATION ---');
+
+  const wb = xlsx.readFile('سيستم الفواتير والمخزون.xlsx');
+  
+  // 1. SYNC SALES PAYMENTS
+  console.log('Processing Sales Payments...');
+  const salesData = xlsx.utils.sheet_to_json(wb.Sheets['sales']);
+  const salesByInv = new Map();
+  salesData.forEach(row => {
+    const invNum = String(row['رقم الفاتورة'] || '').trim();
+    if (!invNum) return;
+    if (!salesByInv.has(invNum)) salesByInv.set(invNum, []);
+    salesByInv.get(invNum).push(row);
+  });
+
+  for (const [invNum, lines] of salesByInv) {
+    const firstLine = lines[0];
+    const method = String(firstLine['طريقة السداد'] || '').trim();
+    
+    // If there is ANY payment method (meaning it was paid)
+    if (method && method !== 'اجل') {
+      const dbInv = await prisma.invoice.findFirst({
+        where: { invoiceNumber: invNum, type: 'SALES' },
+        include: { person: true }
+      });
+
+      if (dbInv && dbInv.paidAmount === 0) {
+        console.log(`Syncing SALE Payment for ${invNum}: ${dbInv.totalAmount} EGP via ${method}`);
+        
+        // Create Payment
+        await prisma.payment.create({
+          data: {
+            personId: dbInv.personId,
+            invoiceId: dbInv.id,
+            amount: dbInv.totalAmount,
+            type: 'IN',
+            method: method,
+            date: dbInv.date,
+            notes: `سداد تلقائي لفاتورة كاش ${invNum}`
+          }
+        });
+
+        // Update Invoice
+        await prisma.invoice.update({
+          where: { id: dbInv.id },
+          data: { 
+            paidAmount: dbInv.totalAmount,
+            paymentStatus: 'CASH'
+          }
+        });
+
+        // Update Person Balance (Subtract from Debt)
+        await prisma.person.update({
+          where: { id: dbInv.personId },
+          data: { currentBalance: { decrement: dbInv.totalAmount } }
+        });
+      }
+    }
+  }
+
+  // 2. SYNC PURCHASE PAYMENTS
+  console.log('Processing Purchase Payments...');
+  const purData = xlsx.utils.sheet_to_json(wb.Sheets['pur']);
+  const purByInv = new Map();
+  purData.forEach(row => {
+    const invNum = String(row['رقم الفاتورة'] || '').trim();
+    if (!invNum) return;
+    if (!purByInv.has(invNum)) purByInv.set(invNum, []);
+    purByInv.get(invNum).push(row);
+  });
+
+  for (const [invNum, lines] of purByInv) {
+    const firstLine = lines[0];
+    const method = String(firstLine['طريقة السداد'] || '').trim();
+
+    if (method && method !== 'اجل') {
+      const dbInv = await prisma.invoice.findFirst({
+        where: { invoiceNumber: invNum, type: 'PURCHASES' },
+        include: { person: true }
+      });
+
+      if (dbInv && dbInv.paidAmount === 0) {
+        console.log(`Syncing PURCHASE Payment for ${invNum}: ${dbInv.totalAmount} EGP via ${method}`);
+        
+        // Create Payment
+        await prisma.payment.create({
+          data: {
+            personId: dbInv.personId,
+            invoiceId: dbInv.id,
+            amount: dbInv.totalAmount,
+            type: 'OUT',
+            method: method,
+            date: dbInv.date,
+            notes: `سداد تلقائي لمشتريات كاش ${invNum}`
+          }
+        });
+
+        // Update Invoice
+        await prisma.invoice.update({
+          where: { id: dbInv.id },
+          data: { 
+            paidAmount: dbInv.totalAmount,
+            paymentStatus: 'CASH'
+          }
+        });
+
+        // Update Person Balance (Subtract from Credit/Liability)
+        await prisma.person.update({
+          where: { id: dbInv.personId },
+          data: { currentBalance: { decrement: dbInv.totalAmount } }
+        });
+      }
+    }
+  }
+
+  console.log('--- PAYMENT SYNCHRONIZATION COMPLETE ---');
+}
+
+main().catch(console.error).finally(() => prisma.$disconnect());

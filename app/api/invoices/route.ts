@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     const paymentStatus = searchParams.get('paymentStatus'); // CASH, CREDIT
     const type          = searchParams.get('type'); // SALES, PURCHASES
 
-    const where: any = { isDeleted: false };
+    const where: any = {};
     if (id) where.id = parseInt(id);
     if (type && type !== 'ALL') where.type = type;
     if (paymentStatus && paymentStatus !== 'ALL') {

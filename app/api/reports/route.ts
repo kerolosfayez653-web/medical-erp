@@ -36,12 +36,12 @@ export async function GET(request: Request) {
     // 1. HIGH-EFFICIENCY AGGREGATIONS (Period Totals)
     const [salesAgg, purAgg, expAgg, payAgg] = await Promise.all([
       prisma.invoice.aggregate({
-        where: { type: 'SALES', date: { gte: startDate, lt: endDate }, isDeleted: false },
+        where: { type: 'SALES', date: { gte: startDate, lt: endDate } },
         _sum: { netAmount: true, deliveryFee: true, discount: true },
         _count: true
       }),
       prisma.invoice.aggregate({
-        where: { type: 'PURCHASES', date: { gte: startDate, lt: endDate }, isDeleted: false },
+        where: { type: 'PURCHASES', date: { gte: startDate, lt: endDate } },
         _sum: { netAmount: true },
         _count: true
       }),
@@ -50,7 +50,7 @@ export async function GET(request: Request) {
         _sum: { amount: true }
       }),
       prisma.payment.findMany({
-        where: { date: { gte: startDate, lt: endDate }, isDeleted: false },
+        where: { date: { gte: startDate, lt: endDate } },
         include: { person: true }
       })
     ]);
@@ -70,7 +70,7 @@ export async function GET(request: Request) {
     // Get aggregated purchases per product up to endDate
     const purchaseAggItems = await prisma.invoiceItem.groupBy({
       by: ['productId'],
-      where: { invoice: { type: 'PURCHASES', date: { lt: endDate }, isDeleted: false } },
+      where: { invoice: { type: 'PURCHASES', date: { lt: endDate } } },
       _sum: { quantity: true, totalNet: true }
     });
 
@@ -92,7 +92,7 @@ export async function GET(request: Request) {
 
     // Calculate COGS for Period
     const salesItemsForPeriod = await prisma.invoiceItem.findMany({
-      where: { invoice: { type: 'SALES', date: { gte: startDate, lt: endDate }, isDeleted: false } },
+      where: { invoice: { type: 'SALES', date: { gte: startDate, lt: endDate } } },
       select: { productId: true, quantity: true }
     });
 
@@ -103,10 +103,10 @@ export async function GET(request: Request) {
 
     // 3. BALANCE SHEET AGGREGATES (Cumulative)
     const [allSalesBefore, allPurBefore, allExpBefore, allPayBefore] = await Promise.all([
-      prisma.invoice.aggregate({ where: { type: 'SALES', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } }),
-      prisma.invoice.aggregate({ where: { type: 'PURCHASES', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } }),
+      prisma.invoice.aggregate({ where: { type: 'SALES', date: { lt: endDate } }, _sum: { netAmount: true } }),
+      prisma.invoice.aggregate({ where: { type: 'PURCHASES', date: { lt: endDate } }, _sum: { netAmount: true } }),
       prisma.expense.aggregate({ where: { date: { lt: endDate } }, _sum: { amount: true } }),
-      prisma.payment.groupBy({ by: ['type'], where: { date: { lt: endDate }, isDeleted: false }, _sum: { amount: true } })
+      prisma.payment.groupBy({ by: ['type'], where: { date: { lt: endDate } }, _sum: { amount: true } })
     ]);
 
     const accCashIn = allPayBefore.find(p => p.type === 'IN')?._sum?.amount || 0;
@@ -116,7 +116,7 @@ export async function GET(request: Request) {
     // Dynamic Inventory Value at EndDate
     const salesHistoryAgg = await prisma.invoiceItem.groupBy({
       by: ['productId'],
-      where: { invoice: { type: 'SALES', date: { lt: endDate }, isDeleted: false } },
+      where: { invoice: { type: 'SALES', date: { lt: endDate } } },
       _sum: { quantity: true }
     });
     const salesMap = new Map(salesHistoryAgg.map(i => [i.productId, i._sum.quantity || 0]));
@@ -136,7 +136,7 @@ export async function GET(request: Request) {
 
     const personPaymentAgg = await prisma.payment.groupBy({
       by: ['personId', 'type'],
-      where: { date: { lt: endDate }, isDeleted: false },
+      where: { date: { lt: endDate } },
       _sum: { amount: true }
     });
 
@@ -165,7 +165,7 @@ export async function GET(request: Request) {
     // --- Details for DRILL-DOWN (Paginated/Limited for health) ---
     // Fetching limited details to prevent UI crash
     const invoices = await prisma.invoice.findMany({
-      where: { date: { gte: startDate, lt: endDate }, isDeleted: false },
+      where: { date: { gte: startDate, lt: endDate } },
       include: { person: true },
       take: 200, // Safety limit
       orderBy: { date: 'desc' }
@@ -188,8 +188,8 @@ export async function GET(request: Request) {
 
     // Customer & Supplier Details
     const [personSalesAgg, personPurAgg] = await Promise.all([
-      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'SALES', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } }),
-      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'PURCHASES', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } })
+      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'SALES', date: { lt: endDate } }, _sum: { netAmount: true } }),
+      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'PURCHASES', date: { lt: endDate } }, _sum: { netAmount: true } })
     ]);
 
     const salesMapP = new Map(personSalesAgg.map(i => [i.personId, Number(i._sum.netAmount) || 0]));

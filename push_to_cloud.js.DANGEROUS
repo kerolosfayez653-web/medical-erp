@@ -1,0 +1,192 @@
+const { PrismaClient } = require('@prisma/client');
+const xlsx = require('xlsx');
+
+const prisma = new PrismaClient();
+
+async function parseExcelDate(serialOrStr) {
+  if (!serialOrStr) return new Date();
+  if (typeof serialOrStr === 'number') {
+    const utcValue = Math.floor(serialOrStr - 25569) * 86400;
+    return new Date(utcValue * 1000);
+  }
+  const d = new Date(serialOrStr);
+  return isNaN(d.getTime()) ? new Date() : d;
+}
+
+function groupInvoiceLines(items, invNumKey, personKey) {
+  const groups = new Map();
+  for (const item of items) {
+    const invNum = String(item[invNumKey] || '').trim();
+    const person = String(item[personKey] || '').trim();
+    if (!person || !invNum) continue;
+    const key = `${invNum}__${person}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  }
+  return groups;
+}
+
+async function main() {
+  console.log('Starting Optimized Migration...');
+  
+  // 1. WIPE
+  console.log('Wiping database...');
+  await prisma.payment.deleteMany();
+  await prisma.invoiceItem.deleteMany();
+  await prisma.invoice.deleteMany();
+  await prisma.inventoryLot.deleteMany();
+  await prisma.product.deleteMany();
+  await prisma.person.deleteMany();
+
+  const wb = xlsx.readFile('سيستم الفواتير والمخزون.xlsx');
+
+  // 2. PRODUCTS & INITIAL DEBTS (Parallel)
+  console.log('Importing Products & Persons...');
+  const inventoryData = xlsx.utils.sheet_to_json(wb.Sheets['المخزون']);
+  const productsToCreate = [];
+  const lotsToCreate = [];
+
+  for (const item of inventoryData) {
+    const pName = String(item['الصنف'] || item['الاسم'] || '').trim();
+    if (!pName) continue;
+    const barcodeVal = String(item['الكود'] || `AUTO_${Date.now()}_${Math.random().toString(36).substring(7)}`);
+    const openingWA = parseFloat(String(item['متوسط مرجح 1/1/2026'] || 0)) || 0;
+    const openingQty = parseFloat(String(item['رصيد اول المدة 1/1/2026'] || 0)) || 0;
+    const avgSell = parseFloat(String(item['متوسط سعر البيع'] || 0)) || 0;
+
+    productsToCreate.push({
+      name: pName,
+      barcode: barcodeVal,
+      openingQty,
+      openingWeightedAvg: openingWA,
+      category: 'عام'
+    });
+  }
+
+  // Create products in one go
+  await prisma.product.createMany({ data: productsToCreate, skipDuplicates: true });
+  const allProducts = await prisma.product.findMany();
+  const productMap = new Map(allProducts.map(p => [p.name, p.id]));
+  const barcodeMap = new Map(allProducts.map(p => [p.barcode, p.id]));
+
+  // Prepare lots
+  for (const item of inventoryData) {
+     const pName = String(item['الصنف'] || item['الاسم'] || '').trim();
+     const barcodeVal = String(item['الكود'] || '');
+     const productId = barcodeMap.get(barcodeVal) || productMap.get(pName);
+     const openingQty = parseFloat(String(item['رصيد اول المدة 1/1/2026'] || 0)) || 0;
+     const openingWA = parseFloat(String(item['متوسط مرجح 1/1/2026'] || 0)) || 0;
+     const avgSell = parseFloat(String(item['متوسط سعر البيع'] || 0)) || 0;
+
+     if (productId && openingQty > 0) {
+       lotsToCreate.push({
+         productId,
+         batchNumber: 'INIT-اول-المدة',
+         expiryDate: new Date('2099-12-31'),
+         quantity: openingQty,
+         costPrice: openingWA,
+         sellingPrice: avgSell,
+       });
+     }
+  }
+  await prisma.inventoryLot.createMany({ data: lotsToCreate });
+
+  // Persons
+  const debtsData = xlsx.utils.sheet_to_json(wb.Sheets['مديونيات']);
+  const personsToCreate = [];
+  for (const item of debtsData) {
+     const personName = String(item['اسم العميل / المورد'] || item['العميل'] || '').trim();
+     if (!personName) continue;
+     const debt = parseFloat(String(item['رصيد 2025'] || 0)) || 0;
+     const type = String(item['النوع'] || '').includes('مورد') ? 'SUPPLIER' : 'CUSTOMER';
+     personsToCreate.push({
+       name: personName,
+       type,
+       initialBalance: debt,
+       currentBalance: debt
+     });
+  }
+  await prisma.person.createMany({ data: personsToCreate, skipDuplicates: true });
+  const allPersons = await prisma.person.findMany();
+  const personMap = new Map(allPersons.map(p => [p.name, p.id]));
+
+  // 3. INVOICES (Purchases)
+  console.log('Importing Purchases...');
+  if (wb.SheetNames.includes('pur')) {
+    const purData = xlsx.utils.sheet_to_json(wb.Sheets['pur']);
+    const groups = groupInvoiceLines(purData, 'رقم الفاتورة', 'اسم العميل');
+    for (const [key, lines] of groups) {
+      const firstLine = lines[0];
+      let pId = personMap.get(String(firstLine['اسم العميل']).trim());
+      if (!pId) {
+        const p = await prisma.person.create({ data: { name: String(firstLine['اسم العميل']).trim(), type: 'SUPPLIER' } });
+        pId = p.id;
+        personMap.set(p.name, pId);
+      }
+
+      const total = parseFloat(firstLine['الصافي'] || firstLine['الاجمالي'] || 0);
+      await prisma.invoice.create({
+        data: {
+          type: 'PURCHASES',
+          personId: pId,
+          totalAmount: total,
+          paidAmount: 0,
+          paymentStatus: 'CREDIT',
+          invoiceNumber: String(firstLine['رقم الفاتورة']),
+          date: await parseExcelDate(firstLine['التاريخ']),
+          items: {
+            create: lines.map(l => ({
+              productId: productMap.get(String(l['الصنف']).trim()) || allProducts[0].id, // fallback
+              quantity: parseFloat(l['الكمية'] || 0),
+              price: parseFloat(l['السعر'] || 0),
+              total: parseFloat(l['الاجمالي'] || 0)
+            }))
+          }
+        }
+      });
+      await prisma.person.update({ where: { id: pId }, data: { currentBalance: { increment: total } } });
+    }
+  }
+
+  // 4. INVOICES (Sales)
+  console.log('Importing Sales...');
+  if (wb.SheetNames.includes('sales')) {
+    const saleData = xlsx.utils.sheet_to_json(wb.Sheets['sales']);
+    const groups = groupInvoiceLines(saleData, 'رقم الفاتورة', 'اسم العميل');
+    for (const [key, lines] of groups) {
+      const firstLine = lines[0];
+      let pId = personMap.get(String(firstLine['اسم العميل']).trim());
+      if (!pId) {
+        const p = await prisma.person.create({ data: { name: String(firstLine['اسم العميل']).trim(), type: 'CUSTOMER' } });
+        pId = p.id;
+        personMap.set(p.name, pId);
+      }
+
+      const total = parseFloat(firstLine['صافي الفاتورة'] || 0);
+      await prisma.invoice.create({
+        data: {
+          type: 'SALES',
+          personId: pId,
+          totalAmount: total,
+          paidAmount: 0,
+          paymentStatus: 'CREDIT',
+          invoiceNumber: String(firstLine['رقم الفاتورة']),
+          date: await parseExcelDate(firstLine['التاريخ']),
+          items: {
+            create: lines.map(l => ({
+              productId: productMap.get(String(l['الصنف']).trim()) || allProducts[0].id,
+              quantity: Math.abs(parseFloat(l['الكمية'] || 0)),
+              price: parseFloat(l['سعر البيع'] || 0),
+              total: Math.abs(parseFloat(l['الكمية'] || 0)) * parseFloat(l['سعر البيع'] || 0)
+            }))
+          }
+        }
+      });
+      await prisma.person.update({ where: { id: pId }, data: { currentBalance: { increment: total } } });
+    }
+  }
+
+  console.log('Migration Successfully Completed!');
+}
+
+main().catch(console.error).finally(() => prisma.$disconnect());

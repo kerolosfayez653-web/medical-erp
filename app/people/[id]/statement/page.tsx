@@ -175,7 +175,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
           >
             💰 {person.type === "CUSTOMER" ? "تحصيل نقدية" : "صرف نقدية"}
           </button>
-          <a href={`/sales?personId=${id}`} className="btn" style={{ background: "rgba(255,255,255,0.08)", textDecoration: "none", padding: "10px 16px", borderRadius: "8px" }}>
+          <a href={`/people/${id}/invoice`} className="btn" style={{ background: "rgba(255,255,255,0.08)", textDecoration: "none", padding: "10px 16px", borderRadius: "8px" }}>
             ➕ فاتورة جديدة
           </a>
         </div>

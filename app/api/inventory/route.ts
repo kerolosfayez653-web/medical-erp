@@ -10,10 +10,7 @@ export async function GET() {
       include: {
         invoiceItems: {
           include: {
-            invoice: { 
-              where: { isDeleted: false },
-              select: { type: true, date: true } 
-            }
+            invoice: { select: { type: true, date: true } }
           }
         }
       },

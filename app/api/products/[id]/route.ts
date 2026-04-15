@@ -7,30 +7,19 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     const body = await request.json();
     const { unit, secondaryUnit, conversionFactor, secondaryPrice } = body;
 
-    // Build the update data object safely
-    const data: any = {};
-    if (typeof unit === 'string') data.unit = unit;
-    if (typeof secondaryUnit === 'string') data.secondaryUnit = secondaryUnit;
-    
-    const cFactor = Number(conversionFactor);
-    if (!isNaN(cFactor)) data.conversionFactor = Math.floor(cFactor);
-    
-    if (secondaryPrice !== undefined && secondaryPrice !== null) {
-      const sPrice = Number(secondaryPrice);
-      if (!isNaN(sPrice)) data.secondaryPrice = sPrice;
-    }
-
     const updated = await prisma.product.update({
       where: { id: parseInt(id) },
-      data
+      data: {
+        unit: unit || null,
+        secondaryUnit: secondaryUnit || null,
+        conversionFactor: parseInt(conversionFactor) || 1,
+        secondaryPrice: parseFloat(secondaryPrice) || null
+      }
     });
 
     return NextResponse.json({ success: true, data: updated });
   } catch (error) {
     console.error('Update Product Error:', error);
-    return NextResponse.json({ 
-      success: false, 
-      error: 'فشل الحفظ: حدث خطأ في الخادم أو في توافق البيانات'
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
 }

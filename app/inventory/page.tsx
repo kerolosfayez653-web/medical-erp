@@ -417,7 +417,7 @@ export default function InventoryPage() {
         </div>
       )}
       {/* Edit Product Modal */}
-{editingProduct && (
+      {editingProduct && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
           <div className="glass-panel" style={{ width: '100%', maxWidth: '500px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
@@ -447,10 +447,7 @@ export default function InventoryPage() {
                  type="number"
                  className="input-field" 
                  value={editingProduct.conversionFactor} 
-                 onChange={e => {
-                   const val = e.target.value;
-                   setEditingProduct({...editingProduct, conversionFactor: val === '' ? 0 : parseInt(val)});
-                 }} 
+                 onChange={e => setEditingProduct({...editingProduct, conversionFactor: parseInt(e.target.value) || 1})} 
                />
             </div>
             <div className="input-group">
@@ -458,11 +455,8 @@ export default function InventoryPage() {
                <input 
                  type="number"
                  className="input-field" 
-                 value={editingProduct.secondaryPrice ?? ''} 
-                 onChange={e => {
-                   const val = e.target.value;
-                   setEditingProduct({...editingProduct, secondaryPrice: val === '' ? 0 : parseFloat(val)});
-                 }} 
+                 value={editingProduct.secondaryPrice || ''} 
+                 onChange={e => setEditingProduct({...editingProduct, secondaryPrice: parseFloat(e.target.value) || 0})} 
                />
             </div>
 
@@ -484,23 +478,15 @@ export default function InventoryPage() {
                       body: JSON.stringify({
                         unit: editingProduct.unit,
                         secondaryUnit: editingProduct.secondaryUnit,
-                        conversionFactor: Number(editingProduct.conversionFactor),
-                        secondaryPrice: Number(editingProduct.secondaryPrice)
+                        conversionFactor: editingProduct.conversionFactor,
+                        secondaryPrice: editingProduct.secondaryPrice
                       })
                     });
-                    const result = await res.json();
-                    if (res.ok && result.success) {
+                    if (res.ok) {
                       setEditingProduct(null);
-                      alert('✅ تم حفظ التعديلات بنجاح');
                       window.location.reload();
-                    } else {
-                      const errMsg = result.error || result.message || 'فشل الحفظ لسبب غير معروف';
-                      alert(`❌ فشل الحفظ: ${errMsg}`);
                     }
-                  } catch (e) { 
-                    console.error('Save error:', e); 
-                    alert('❌ حدث خطأ تقني أثناء محاولة الحفظ. يرجى مراجعة الاتصال بالإنترنت.');
-                  }
+                  } catch (e) { console.error(e); }
                   setSubmitting(false);
                 }}
                 className="btn btn-primary"

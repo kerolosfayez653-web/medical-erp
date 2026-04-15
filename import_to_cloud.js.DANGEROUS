@@ -1,0 +1,78 @@
+const { PrismaClient } = require('@prisma/client');
+const fs = require('fs');
+
+async function importDataBulk() {
+  const prisma = new PrismaClient();
+  const data = JSON.parse(fs.readFileSync('migration_data.json', 'utf8'));
+
+  try {
+    console.log('--- Starting Optimized Bulk Migration ---');
+
+    const tableNames = [
+      'InvoiceLog',
+      'Payment',
+      'InvoiceItem',
+      'Invoice',
+      'InventoryLot',
+      'Person',
+      'Product',
+      'Expense'
+    ];
+
+    // 1. CLEAR EXISTING DATA (Reverse Dependency Order)
+    console.log('Clearing existing cloud data...');
+    for (const table of tableNames) {
+       await prisma[table.charAt(0).toLowerCase() + table.slice(1)].deleteMany({});
+    }
+
+    // 2. BULK INSERT (Dependency Order)
+    console.log(`Importing ${data.products.length} Products...`);
+    await prisma.product.createMany({ data: data.products });
+
+    console.log(`Importing ${data.persons.length} Persons...`);
+    await prisma.person.createMany({ data: data.persons });
+
+    if (data.lots.length > 0) {
+      console.log(`Importing ${data.lots.length} InventoryLots...`);
+      await prisma.inventoryLot.createMany({ data: data.lots });
+    }
+
+    console.log(`Importing ${data.invoices.length} Invoices...`);
+    await prisma.invoice.createMany({ data: data.invoices });
+
+    console.log(`Importing ${data.items.length} InvoiceItems...`);
+    await prisma.invoiceItem.createMany({ data: data.items });
+
+    console.log(`Importing ${data.payments.length} Payments...`);
+    await prisma.payment.createMany({ data: data.payments });
+
+    console.log(`Importing ${data.expenses.length} Expenses...`);
+    await prisma.expense.createMany({ data: data.expenses });
+
+    if (data.logs.length > 0) {
+      console.log(`Importing ${data.logs.length} Logs...`);
+      await prisma.invoiceLog.createMany({ data: data.logs });
+    }
+
+    console.log('--- Resetting PostgreSQL Sequences ---');
+    for (const table of tableNames) {
+      try {
+        await prisma.$queryRawUnsafe(`
+          SELECT setval(pg_get_serial_sequence('"${table}"', 'id'), coalesce(max(id), 0) + 1, false) FROM "${table}";
+        `);
+        console.log(`Sequence reset for ${table}`);
+      } catch (seqError) {
+        // Skip tables without sequences or errors
+      }
+    }
+
+    console.log('--- Bulk Migration Completed Successfully ---');
+
+  } catch (error) {
+    console.error('Migration failed:', error);
+  } finally {
+    await prisma.$disconnect();
+  }
+}
+
+importDataBulk();
