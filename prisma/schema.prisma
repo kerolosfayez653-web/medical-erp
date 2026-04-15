@@ -160,6 +160,17 @@ model Expense {
   updatedAt     DateTime @updatedAt
 }
 
+// مستخدمي النظام
+model User {
+  id        Int      @id @default(autoincrement())
+  username  String   @unique
+  password  String
+  name      String?
+  role      String   @default("ADMIN")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 // عروض الأسعار
 model Quotation {
   id              Int             @id @default(autoincrement())
