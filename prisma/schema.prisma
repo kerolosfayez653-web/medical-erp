@@ -45,7 +45,7 @@ model InventoryLot {
   product       Product   @relation(fields: [productId], references: [id])
   batchNumber   String    // رقم التشغيلة
   expiryDate    DateTime  // تاريخ الصلاحية
-  quantity      Int       // الكمية الحالية في هذا التشغيل
+  quantity      Float     // الكمية الحالية في هذا التشغيل
   costPrice     Float     // سعر الشراء 
   sellingPrice  Float     // سعر البيع
   createdAt     DateTime  @default(now())
@@ -122,7 +122,7 @@ model InvoiceItem {
   lotId         Int?          
   lot           InventoryLot? @relation(fields: [lotId], references: [id])
   
-  quantity      Int           
+  quantity      Float           
   unitType      String        @default("PRIMARY")
   price         Float         
   costPrice     Float?        
@@ -192,7 +192,7 @@ model QuotationItem {
   productId       Int
   product         Product       @relation(fields: [productId], references: [id])
   
-  quantity        Int
+  quantity        Float
   unitType        String        @default("PRIMARY")
   price           Float         // سعر الوحدة المتفق عليه في العرض
   total           Float         // quantity * price
