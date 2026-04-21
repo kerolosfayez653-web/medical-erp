@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import LayoutWrapper from './LayoutWrapper';
-import { Providers } from './Providers';
 
 export const metadata: Metadata = {
   title: '24MED - نظام إدارة المستلزمات الطبية',
@@ -16,11 +15,9 @@ export default function RootLayout({
   return (
     <html lang="ar" dir="rtl">
       <body>
-        <Providers>
-          <LayoutWrapper>
-            {children}
-          </LayoutWrapper>
-        </Providers>
+        <LayoutWrapper>
+          {children}
+        </LayoutWrapper>
       </body>
     </html>
   );
