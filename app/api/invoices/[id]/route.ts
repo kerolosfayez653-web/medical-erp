@@ -245,15 +245,20 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
         }
       }
 
-      // 2. DELETE RELATED RECORDS
-      await tx.invoiceItem.deleteMany({ where: { invoiceId } });
-      await tx.payment.deleteMany({ where: { invoiceId } });
+      // 2. SOFT-DELETE RELATED RECORDS (do not hard-delete items so they can be restored)
+      await tx.payment.updateMany({ 
+        where: { invoiceId },
+        data: { isDeleted: true, deletedAt: new Date() }
+      });
+      // Note: We leave invoiceItems alone. Since they belong to a soft-deleted invoice, 
+      // they remain untouched in the DB and are restored when the invoice is restored.
+      
       await tx.invoiceLog.create({
         data: {
-          invoiceId: null, // Disconnect from the ID since we are deleting it
+          invoiceId: invoiceId, // Keep it linked to track history even in trash
           action: 'DELETE',
           oldData: JSON.stringify(invoice),
-          reason: `حذف نهائي للفاتورة رقم ${invoice.invoiceNumber || invoiceId}`
+          reason: `حذف (نقل للمهملات) للفاتورة رقم ${invoice.invoiceNumber || invoiceId}`
         }
       });
       

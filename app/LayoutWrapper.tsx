@@ -1,7 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { usePathname } from "next/navigation";
-import { useSession, signOut } from "next-auth/react";
+import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
 
 interface LayoutWrapperProps {
@@ -10,21 +9,22 @@ interface LayoutWrapperProps {
 
 export default function LayoutWrapper({ children }: LayoutWrapperProps) {
   const pathname = usePathname();
-  const { data: session, status } = useSession();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">("dark");
+  const [loggingOut, setLoggingOut] = useState(false);
 
-  const isLoginPage = pathname === "/login";
-  const isPublicPage = pathname?.endsWith("/print") || pathname?.startsWith("/pay/");
+  const isPublicPage =
+    pathname?.endsWith("/print") ||
+    pathname?.startsWith("/pay/") ||
+    pathname?.startsWith("/login");
 
   useEffect(() => {
-    // Load persisted theme
     const savedTheme = localStorage.getItem("theme") as "light" | "dark";
     if (savedTheme) {
       setTheme(savedTheme);
       document.documentElement.setAttribute("data-theme", savedTheme);
     } else {
-      // Default to dark
       document.documentElement.setAttribute("data-theme", "dark");
     }
   }, []);
@@ -36,38 +36,35 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
     localStorage.setItem("theme", newTheme);
   };
 
-  const handleLogout = () => {
-    signOut({ callbackUrl: "/login" });
+  const handleLogout = async () => {
+    setLoggingOut(true);
+    await fetch("/api/auth/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
   };
 
-  if (isLoginPage || isPublicPage) {
+  if (isPublicPage) {
     return <div className="public-layout">{children}</div>;
-  }
-
-  // Prevent flash of content if not authenticated
-  if (status === "unauthenticated") {
-    return null;
   }
 
   return (
     <div className="app-container">
-      {/* Sidebar Overlay for Mobile */}
       {sidebarOpen && (
-        <div 
+        <div
           className="mobile-overlay"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      <Sidebar 
-        isOpen={sidebarOpen} 
-        onClose={() => setSidebarOpen(false)} 
+      <Sidebar
+        isOpen={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
       />
 
       <main>
         <header className="glass-header">
           <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
-            <button 
+            <button
               onClick={() => setSidebarOpen(true)}
               className="btn"
               style={{ padding: "8px", border: "none", background: "none", fontSize: "1.5rem" }}
@@ -82,18 +79,32 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-             <button 
-                onClick={handleLogout}
-                className="btn"
-                style={{ fontSize: "0.85rem", color: "var(--danger-color)", borderColor: "rgba(244,63,94,0.2)" }}
-             >
-                تسجيل الخروج
-             </button>
-             
-             <div className="desktop-only" style={{ textAlign: "right", borderRight: "1px solid var(--border-color)", paddingRight: "15px" }}>
-                <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>مرحباً بك</div>
-                <div style={{ fontSize: "0.95rem", fontWeight: "bold" }}>{session?.user?.name || "المدير العام"}</div>
-             </div>
+            <div className="desktop-only" style={{ textAlign: "right", borderRight: "1px solid var(--border-color)", paddingRight: "15px" }}>
+              <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>مرحباً بك</div>
+              <div style={{ fontSize: "0.95rem", fontWeight: "bold" }}>المدير العام</div>
+            </div>
+            <button
+              onClick={handleLogout}
+              disabled={loggingOut}
+              title="تسجيل الخروج"
+              style={{
+                display: "flex", alignItems: "center", gap: "6px",
+                padding: "8px 14px",
+                background: "rgba(244,63,94,0.1)",
+                border: "1px solid rgba(244,63,94,0.25)",
+                borderRadius: "10px",
+                color: "#f43f5e",
+                cursor: "pointer",
+                fontSize: "0.85rem",
+                fontWeight: "600",
+                fontFamily: "Cairo, sans-serif",
+                transition: "all 0.2s ease",
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = "rgba(244,63,94,0.2)")}
+              onMouseLeave={e => (e.currentTarget.style.background = "rgba(244,63,94,0.1)")}
+            >
+              {loggingOut ? "..." : <>🚪 <span className="desktop-only">خروج</span></>}
+            </button>
           </div>
         </header>
 

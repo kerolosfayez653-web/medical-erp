@@ -81,6 +81,12 @@ export async function POST(request: Request) {
           }
         }
 
+        // 3. RESTORE RELATED PAYMENTS
+        await tx.payment.updateMany({
+          where: { invoiceId: id },
+          data: { isDeleted: false, deletedAt: null }
+        });
+
         return await tx.invoice.update({
           where: { id },
           data: { isDeleted: false, deletedAt: null }

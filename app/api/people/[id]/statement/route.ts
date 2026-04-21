@@ -94,7 +94,6 @@ export async function GET(
         const methodStr = inv.paymentMethod ? ` (${inv.paymentMethod})` : '';
 
         if (inv.type === 'SALES') {
-          // Sales invoice: customer owes us → debit based on netAmount
           entries.push({
             date: inv.date,
             type: 'INVOICE',
@@ -103,7 +102,7 @@ export async function GET(
             invoiceType: inv.type,
             description: `فاتورة مبيعات ${inv.invoiceNumber || '#' + inv.id}${methodStr}`,
             debit: inv.netAmount,
-            credit: 0,
+            credit: inv.paidAmount || 0, // FIXED: Add paidAmount as a credit inline to avoid double-counting but reflect true collection
             balance: 0,
             totalAmount: inv.totalAmount,
             netAmount: inv.netAmount,
@@ -122,7 +121,6 @@ export async function GET(
             })),
           });
         } else if (inv.type === 'PURCHASES') {
-          // Purchase invoice: we owe supplier → credit based on netAmount
           entries.push({
             date: inv.date,
             type: 'INVOICE',
@@ -130,7 +128,7 @@ export async function GET(
             invoiceNumber: inv.invoiceNumber,
             invoiceType: inv.type,
             description: `فاتورة مشتريات ${inv.invoiceNumber || '#' + inv.id}${methodStr}`,
-            debit: 0,
+            debit: inv.paidAmount || 0, // FIXED: Add paidAmount as inline debit
             credit: inv.netAmount,
             balance: 0,
             totalAmount: inv.totalAmount,
