@@ -136,12 +136,9 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
           </div>
           <h1 style={{ margin: 0, fontSize: '2.2rem' }}>كشف حساب: {person.name}</h1>
           
-          <div style={{ 
+          <div className="glass-panel" style={{ 
             marginTop: "1rem", 
             padding: "1rem", 
-            background: "rgba(255,255,255,0.03)", 
-            border: "1px solid rgba(255,255,255,0.08)", 
-            borderRadius: "12px",
             display: "grid",
             gridTemplateColumns: "1fr 1fr",
             gap: "10px"
