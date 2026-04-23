@@ -51,13 +51,13 @@ export async function GET(request: Request) {
           where.paymentStatus = paymentStatus;
        }
        
-       // Applied to both Credit and Partial selections: 
-       // Hide any unpaid status if the account balance is settled (<= 0.1 for float safety)
-       if (paymentStatus === 'CREDIT' || paymentStatus === 'PARTIAL') {
+       // Applied to Credit ONLY selection: 
+       // Hide any unpaid status if the account balance is settled (between -0.1 and 0.1 for float safety)
+       if (paymentStatus === 'CREDIT') {
           where.NOT = {
             AND: [
               { paymentStatus: { in: ['CREDIT', 'PARTIAL'] } },
-              { person: { currentBalance: { lte: 0.1 } } }
+              { person: { currentBalance: { lte: 0.1, gte: -0.1 } } }
             ]
           };
        }

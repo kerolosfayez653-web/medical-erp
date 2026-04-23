@@ -110,6 +110,8 @@ function SalesPageContent() {
     }
   }, [cart, selectedCustomerId, custSearch, discount, deliveryFee, paidAmount]);
 
+  const selectedCustomer = customers.find(c => String(c.id) === selectedCustomerId) || null;
+
   useEffect(() => {
     if (selectedCustomer) {
       setPersonPhone(selectedCustomer.phone || "");
@@ -121,6 +123,7 @@ function SalesPageContent() {
   }, [selectedCustomer]);
 
   // Validate selected customer (clear if deleted/stale)
+
   useEffect(() => {
     if (customers.length > 0 && selectedCustomerId) {
       const exists = customers.some(c => String(c.id) === selectedCustomerId);
@@ -131,8 +134,6 @@ function SalesPageContent() {
       }
     }
   }, [customers, selectedCustomerId]);
-
-  const selectedCustomer = customers.find(c => String(c.id) === selectedCustomerId) || null;
   const normalizeText = (text: string) => 
     text?.toLowerCase()
       .replace(/[أإآ]/g, 'ا')

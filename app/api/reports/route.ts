@@ -34,14 +34,24 @@ export async function GET(request: Request) {
     }
 
     // 1. HIGH-EFFICIENCY AGGREGATIONS (Period Totals)
-    const [salesAgg, purAgg, expAgg, payAgg] = await Promise.all([
+    const [salesAgg, purAgg, salesRetAgg, purRetAgg, expAgg, payAgg] = await Promise.all([
       prisma.invoice.aggregate({
-        where: { type: 'SALES', date: { gte: startDate, lt: endDate } },
+        where: { type: 'SALES', date: { gte: startDate, lt: endDate }, isDeleted: false },
         _sum: { netAmount: true, deliveryFee: true, discount: true },
         _count: true
       }),
       prisma.invoice.aggregate({
-        where: { type: 'PURCHASES', date: { gte: startDate, lt: endDate } },
+        where: { type: 'PURCHASES', date: { gte: startDate, lt: endDate }, isDeleted: false },
+        _sum: { netAmount: true },
+        _count: true
+      }),
+      prisma.invoice.aggregate({
+        where: { type: 'SALES_RETURN', date: { gte: startDate, lt: endDate }, isDeleted: false },
+        _sum: { netAmount: true, discount: true },
+        _count: true
+      }),
+      prisma.invoice.aggregate({
+        where: { type: 'PURCHASES_RETURN', date: { gte: startDate, lt: endDate }, isDeleted: false },
         _sum: { netAmount: true },
         _count: true
       }),
@@ -50,31 +60,38 @@ export async function GET(request: Request) {
         _sum: { amount: true }
       }),
       prisma.payment.findMany({
-        where: { date: { gte: startDate, lt: endDate } },
+        where: { date: { gte: startDate, lt: endDate }, isDeleted: false },
         include: { person: true }
       })
     ]);
 
-    const totalSales = salesAgg._sum.netAmount || 0;
-    const totalPurchases = purAgg._sum.netAmount || 0;
+    const totalSales = (salesAgg._sum.netAmount || 0) - (salesRetAgg._sum.netAmount || 0);
+    const totalPurchases = (purAgg._sum.netAmount || 0) - (purRetAgg._sum.netAmount || 0);
     const totalExpenses = expAgg._sum.amount || 0;
     const totalDeliveryRevenue = salesAgg._sum.deliveryFee || 0;
-    const totalDiscount = salesAgg._sum.discount || 0;
+    const totalDiscount = (salesAgg._sum.discount || 0) - (salesRetAgg._sum.discount || 0);
 
     // 2. OPTIMIZED WAC CALCULATION (Database Level)
-    // Get all products and their opening balances
     const products = await prisma.product.findMany({
-      select: { id: true, name: true, openingQty: true, openingWeightedAvg: true }
+      select: { id: true, name: true, openingQty: true, openingWeightedAvg: true, conversionFactor: true }
     });
 
-    // Get aggregated purchases per product up to endDate
-    const purchaseAggItems = await prisma.invoiceItem.groupBy({
-      by: ['productId'],
-      where: { invoice: { type: 'PURCHASES', date: { lt: endDate } } },
-      _sum: { quantity: true, totalNet: true }
-    });
+    const [purchaseAggItems, purRetAggItems] = await Promise.all([
+      prisma.invoiceItem.groupBy({
+        by: ['productId'],
+        where: { invoice: { type: 'PURCHASES', date: { lt: endDate }, isDeleted: false } },
+        _sum: { quantity: true, totalNet: true }
+      }),
+      prisma.invoiceItem.groupBy({
+        by: ['productId'],
+        where: { invoice: { type: 'PURCHASES_RETURN', date: { lt: endDate }, isDeleted: false } },
+        _sum: { quantity: true, totalNet: true }
+      })
+    ]);
 
     const purMap = new Map(purchaseAggItems.map(i => [i.productId, i]));
+    const purRetMap = new Map(purRetAggItems.map(i => [i.productId, i]));
+    
     const productWAC = new Map();
     let totalOpeningValue = 0;
 
@@ -82,31 +99,47 @@ export async function GET(request: Request) {
       const pAgg = purMap.get(p.id);
       const purQty = pAgg?._sum?.quantity || 0;
       const purVal = pAgg?._sum?.totalNet || 0;
-      const totalInQty = p.openingQty + purQty;
-      const wac = totalInQty > 0 
-        ? ((p.openingQty * p.openingWeightedAvg) + purVal) / totalInQty 
-        : p.openingWeightedAvg;
+      
+      const pRetAgg = purRetMap.get(p.id);
+      const purRetQty = pRetAgg?._sum?.quantity || 0;
+      const purRetVal = pRetAgg?._sum?.totalNet || 0;
+
+      const factor = p.conversionFactor || 1;
+      const openingPieces = p.openingQty * factor;
+      const openingValue = p.openingQty * p.openingWeightedAvg; // Box * Price_Per_Box = correct EGP value
+
+      const totalInQtyPieces = openingPieces + purQty - purRetQty;
+      const totalInValue = openingValue + purVal - purRetVal;
+
+      const wac = totalInQtyPieces > 0 
+        ? totalInValue / totalInQtyPieces 
+        : (p.openingWeightedAvg / factor);
+
       productWAC.set(p.id, wac);
-      totalOpeningValue += (p.openingQty * p.openingWeightedAvg);
+      totalOpeningValue += openingValue;
     });
 
     // Calculate COGS for Period
     const salesItemsForPeriod = await prisma.invoiceItem.findMany({
-      where: { invoice: { type: 'SALES', date: { gte: startDate, lt: endDate } } },
-      select: { productId: true, quantity: true }
+      where: { invoice: { type: { in: ['SALES', 'SALES_RETURN'] }, date: { gte: startDate, lt: endDate }, isDeleted: false } },
+      select: { productId: true, quantity: true, invoice: { select: { type: true } } }
     });
 
     let totalCOGS = 0;
     salesItemsForPeriod.forEach(item => {
-      totalCOGS += (item.quantity * (productWAC.get(item.productId) || 0));
+      // SALES_RETURN quantity is subtracted from COGS because it returned to stock
+      const q = item.invoice.type === 'SALES' ? item.quantity : -item.quantity;
+      totalCOGS += (q * (productWAC.get(item.productId) || 0));
     });
 
     // 3. BALANCE SHEET AGGREGATES (Cumulative)
-    const [allSalesBefore, allPurBefore, allExpBefore, allPayBefore] = await Promise.all([
-      prisma.invoice.aggregate({ where: { type: 'SALES', date: { lt: endDate } }, _sum: { netAmount: true } }),
-      prisma.invoice.aggregate({ where: { type: 'PURCHASES', date: { lt: endDate } }, _sum: { netAmount: true } }),
+    const [allSalesBefore, allPurBefore, allSalesRetBefore, allPurRetBefore, allExpBefore, allPayBefore] = await Promise.all([
+      prisma.invoice.aggregate({ where: { type: 'SALES', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } }),
+      prisma.invoice.aggregate({ where: { type: 'PURCHASES', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } }),
+      prisma.invoice.aggregate({ where: { type: 'SALES_RETURN', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } }),
+      prisma.invoice.aggregate({ where: { type: 'PURCHASES_RETURN', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } }),
       prisma.expense.aggregate({ where: { date: { lt: endDate } }, _sum: { amount: true } }),
-      prisma.payment.groupBy({ by: ['type'], where: { date: { lt: endDate } }, _sum: { amount: true } })
+      prisma.payment.groupBy({ by: ['type'], where: { date: { lt: endDate }, isDeleted: false }, _sum: { amount: true } })
     ]);
 
     const accCashIn = allPayBefore.find(p => p.type === 'IN')?._sum?.amount || 0;
@@ -114,20 +147,44 @@ export async function GET(request: Request) {
     const cashOnHand = accCashIn - accCashOut - (allExpBefore._sum.amount || 0);
 
     // Dynamic Inventory Value at EndDate
-    const salesHistoryAgg = await prisma.invoiceItem.groupBy({
-      by: ['productId'],
-      where: { invoice: { type: 'SALES', date: { lt: endDate } } },
-      _sum: { quantity: true }
-    });
+    const [salesHistoryAgg, salesRetHistoryAgg] = await Promise.all([
+      prisma.invoiceItem.groupBy({
+        by: ['productId'],
+        where: { invoice: { type: 'SALES', date: { lt: endDate }, isDeleted: false } },
+        _sum: { quantity: true }
+      }),
+      prisma.invoiceItem.groupBy({
+        by: ['productId'],
+        where: { invoice: { type: 'SALES_RETURN', date: { lt: endDate }, isDeleted: false } },
+        _sum: { quantity: true }
+      })
+    ]);
+
     const salesMap = new Map(salesHistoryAgg.map(i => [i.productId, i._sum.quantity || 0]));
+    const salesRetMap = new Map(salesRetHistoryAgg.map(i => [i.productId, i._sum.quantity || 0]));
 
     let endingInventoryValue = 0;
+    const inventoryDetails: any[] = [];
+
     products.forEach(p => {
-      const pPurchased = purMap.get(p.id)?._sum?.quantity || 0;
-      const pSold = salesMap.get(p.id) || 0;
-      const curQty = p.openingQty + pPurchased - pSold;
-      endingInventoryValue += (curQty * (productWAC.get(p.id) || 0));
+      const factor = p.conversionFactor || 1;
+      const openingPieces = p.openingQty * factor;
+      
+      const pPurchased = (purMap.get(p.id)?._sum?.quantity || 0) - (purRetMap.get(p.id)?._sum?.quantity || 0);
+      const pSold = (salesMap.get(p.id) || 0) - (salesRetMap.get(p.id) || 0);
+      
+      const curQty = openingPieces + pPurchased - pSold;
+      const wac = productWAC.get(p.id) || 0;
+      const value = curQty * wac;
+      
+      endingInventoryValue += value;
+      
+      if (curQty !== 0) {
+         inventoryDetails.push({ id: p.id, name: p.name, qty: curQty, wac, value });
+      }
     });
+
+    inventoryDetails.sort((a,b) => b.value - a.value);
 
     // Debt & Receivables
     const persons = await prisma.person.findMany();
@@ -136,20 +193,43 @@ export async function GET(request: Request) {
 
     const personPaymentAgg = await prisma.payment.groupBy({
       by: ['personId', 'type'],
-      where: { date: { lt: endDate } },
+      where: { date: { lt: endDate }, isDeleted: false },
       _sum: { amount: true }
     });
 
     const getPersonPaid = (pid: string, type: 'IN' | 'OUT') => {
-      return personPaymentAgg.find(a => a.personId === pid && a.type === type)?._sum?.amount || 0;
+      return personPaymentAgg.find(a => a.personId === Number(pid) && a.type === type)?._sum?.amount || 0;
     };
+    
+    const [personSalesAgg, personSalesRetAgg, personPurAgg, personPurRetAgg] = await Promise.all([
+      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'SALES', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } }),
+      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'SALES_RETURN', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } }),
+      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'PURCHASES', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } }),
+      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'PURCHASES_RETURN', date: { lt: endDate }, isDeleted: false }, _sum: { netAmount: true } })
+    ]);
 
-    const receivables = initialCustomerDebt + (allSalesBefore._sum.netAmount || 0) - 
-      persons.filter(p => p.type === 'CUSTOMER').reduce((s, p) => s + getPersonPaid(p.id, 'IN'), 0);
-    const payables = initialSupplierCredit + (allPurBefore._sum.netAmount || 0) - 
-      persons.filter(p => p.type === 'SUPPLIER').reduce((s, p) => s + getPersonPaid(p.id, 'OUT'), 0);
+    const getAgg = (arr: any[], id: string) => Number(arr.find(a => a.personId === Number(id))?._sum?.netAmount) || 0;
 
-    // Business Logic: Opening Cash Balance (10,278 EGP)
+    const customerDetails = persons.filter(p => p.type === 'CUSTOMER').map(p => {
+      const sales = getAgg(personSalesAgg, String(p.id)) - getAgg(personSalesRetAgg, String(p.id));
+      const paid = getPersonPaid(String(p.id), 'IN') - getPersonPaid(String(p.id), 'OUT'); // Out meaning refunds
+      const bal = p.initialBalance + sales - paid;
+      return { name: p.name, initial: p.initialBalance, sales, paid, balance: bal };
+    }).filter(p => Math.abs(p.balance) > 0.1);
+
+    const supplierDetails = persons.filter(p => p.type === 'SUPPLIER').map(p => {
+      const purchases = getAgg(personPurAgg, String(p.id)) - getAgg(personPurRetAgg, String(p.id));
+      const paid = getPersonPaid(String(p.id), 'OUT') - getPersonPaid(String(p.id), 'IN');
+      const bal = p.initialBalance + purchases - paid;
+      return { name: p.name, initial: p.initialBalance, purchases, paid, balance: bal };
+    }).filter(p => Math.abs(p.balance) > 0.1);
+
+    const receivables = initialCustomerDebt + ((allSalesBefore._sum.netAmount || 0) - (allSalesRetBefore._sum.netAmount || 0)) - 
+      persons.filter(p => p.type === 'CUSTOMER').reduce((s, p) => s + (getPersonPaid(String(p.id), 'IN') - getPersonPaid(String(p.id), 'OUT')), 0);
+      
+    const payables = initialSupplierCredit + ((allPurBefore._sum.netAmount || 0) - (allPurRetBefore._sum.netAmount || 0)) - 
+      persons.filter(p => p.type === 'SUPPLIER').reduce((s, p) => s + (getPersonPaid(String(p.id), 'OUT') - getPersonPaid(String(p.id), 'IN')), 0);
+
     const openingCashBalance = 10278;
 
     const balanceSheet = {
@@ -162,54 +242,13 @@ export async function GET(request: Request) {
       totalAssets: (cashOnHand + openingCashBalance) + receivables + endingInventoryValue
     };
 
-    // --- Details for DRILL-DOWN (Paginated/Limited for health) ---
-    // Fetching limited details to prevent UI crash
     const invoices = await prisma.invoice.findMany({
-      where: { date: { gte: startDate, lt: endDate } },
+      where: { date: { gte: startDate, lt: endDate }, isDeleted: false },
       include: { person: true },
-      take: 200, // Safety limit
+      take: 200, 
       orderBy: { date: 'desc' }
     });
 
-    // Inventory Breakdown
-    const inventoryDetails = products.map(p => {
-      const pPurchased = purMap.get(p.id)?._sum?.quantity || 0;
-      const pSold = salesMap.get(p.id) || 0;
-      const curQty = p.openingQty + pPurchased - pSold;
-      const wac = productWAC.get(p.id) || 0;
-      return {
-        id: p.id,
-        name: p.name,
-        qty: curQty,
-        wac: wac,
-        value: curQty * wac
-      };
-    }).filter(i => i.qty !== 0);
-
-    // Customer & Supplier Details
-    const [personSalesAgg, personPurAgg] = await Promise.all([
-      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'SALES', date: { lt: endDate } }, _sum: { netAmount: true } }),
-      prisma.invoice.groupBy({ by: ['personId'], where: { type: 'PURCHASES', date: { lt: endDate } }, _sum: { netAmount: true } })
-    ]);
-
-    const salesMapP = new Map(personSalesAgg.map(i => [i.personId, Number(i._sum.netAmount) || 0]));
-    const purMapP = new Map(personPurAgg.map(i => [i.personId, Number(i._sum.netAmount) || 0]));
-
-    const customerDetails = persons.filter(p => p.type === 'CUSTOMER').map(p => {
-      const sales = salesMapP.get(p.id) || 0;
-      const paid = getPersonPaid(p.id, 'IN');
-      const bal = p.initialBalance + sales - paid;
-      return { name: p.name, initial: p.initialBalance, sales, paid, balance: bal };
-    }).filter(p => p.balance !== 0);
-
-    const supplierDetails = persons.filter(p => p.type === 'SUPPLIER').map(p => {
-      const purchases = purMapP.get(p.id) || 0;
-      const paid = getPersonPaid(p.id, 'OUT');
-      const bal = p.initialBalance + purchases - paid;
-      return { name: p.name, initial: p.initialBalance, purchases, paid, balance: bal };
-    }).filter(p => p.balance !== 0);
-
-    // Expense Breakdown for totals
     const expenseBreakdown: Record<string, number> = {};
     const allExpenses = await prisma.expense.findMany({ where: { date: { gte: startDate, lt: endDate } } });
     allExpenses.forEach(e => {
@@ -230,8 +269,8 @@ export async function GET(request: Request) {
         netProfit: (totalSales - totalCOGS) - totalExpenses,
         totalPaymentsIn,
         totalPaymentsOut,
-        salesCount: salesAgg._count,
-        purchasesCount: purAgg._count,
+        salesCount: (salesAgg._count || 0) + (salesRetAgg._count || 0),
+        purchasesCount: (purAgg._count || 0) + (purRetAgg._count || 0),
         totalDeliveryRevenue,
         totalDiscount,
         totalOpeningValue,
@@ -241,7 +280,7 @@ export async function GET(request: Request) {
       balanceSheetDetails: {
         customers: customerDetails,
         suppliers: supplierDetails, 
-        inventory: inventoryDetails.sort((a,b) => b.value - a.value).slice(0, 100),
+        inventory: inventoryDetails.slice(0, 100),
         cash: payAgg.sort((a,b) => b.date.getTime() - a.date.getTime())
       },
       expenseBreakdown,

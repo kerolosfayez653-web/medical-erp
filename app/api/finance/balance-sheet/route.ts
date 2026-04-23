@@ -13,21 +13,37 @@ export async function GET() {
     const [products, persons, allPayments, allExpenses, allInvoices] = await Promise.all([
       prisma.product.findMany({ include: { invoiceItems: { include: { invoice: true } } } }),
       prisma.person.findMany(),
-      prisma.payment.findMany({ include: { person: true } }),
+      prisma.payment.findMany({ where: { isDeleted: false }, include: { person: true } }),
       prisma.expense.findMany(),
-      prisma.invoice.findMany({ include: { items: true } })
+      prisma.invoice.findMany({ where: { isDeleted: false }, include: { items: true } })
     ]);
 
     // 2. WAC Calculation (Consolidated)
     const productWAC = new Map();
     products.forEach(p => {
-      const pItems = p.invoiceItems.filter(i => i.invoice.type === 'PURCHASES');
-      const purQty = pItems.reduce((s, i) => s + i.quantity, 0);
-      const purVal = pItems.reduce((s, i) => s + i.totalNet, 0);
-      const totalInQty = p.openingQty + purQty;
-      const wac = totalInQty > 0 
-        ? ((p.openingQty * p.openingWeightedAvg) + purVal) / totalInQty 
-        : p.openingWeightedAvg;
+      const isPurchase = (i: any) => i.invoice.type === 'PURCHASES' && !i.invoice.isDeleted;
+      const isPurchaseRet = (i: any) => i.invoice.type === 'PURCHASES_RETURN' && !i.invoice.isDeleted;
+      
+      const pPurItems = p.invoiceItems.filter(isPurchase);
+      const pPurRetItems = p.invoiceItems.filter(isPurchaseRet);
+
+      const purQty = pPurItems.reduce((s, i) => s + i.quantity, 0);
+      const purVal = pPurItems.reduce((s, i) => s + i.totalNet, 0);
+
+      const purRetQty = pPurRetItems.reduce((s, i) => s + i.quantity, 0);
+      const purRetVal = pPurRetItems.reduce((s, i) => s + i.totalNet, 0);
+
+      const factor = p.conversionFactor || 1;
+      const openingPieces = p.openingQty * factor;
+      const openingValue = p.openingQty * p.openingWeightedAvg;
+
+      const totalInQtyPieces = openingPieces + purQty - purRetQty;
+      const totalInValue = openingValue + purVal - purRetVal;
+
+      const wac = totalInQtyPieces > 0 
+        ? totalInValue / totalInQtyPieces 
+        : (p.openingWeightedAvg / factor);
+
       productWAC.set(p.id, wac);
     });
 
@@ -48,17 +64,21 @@ export async function GET() {
 
     // Assets: Receivables
     const customerTransactions = persons.filter(p => p.type === 'CUSTOMER').map(p => {
-      const pSales = allInvoices.filter(i => i.type === 'SALES' && i.personId === p.id).reduce((s, i) => s + i.netAmount, 0);
-      const pPaid = allPayments.filter(pay => pay.personId === p.id && pay.type === 'IN' && !pay.notes?.includes('افتتاحي')).reduce((s, pay) => s + pay.amount, 0);
-      return { name: p.name, balance: p.initialBalance + pSales - pPaid };
+      return { name: p.name, balance: p.currentBalance };
     }).filter(c => Math.abs(c.balance) > 0.1);
     const currentReceivables = customerTransactions.reduce((s, c) => s + c.balance, 0);
 
     // Assets: Inventory
     const inventoryItems = products.map(p => {
-      const purQty = p.invoiceItems.filter(i => i.invoice.type === 'PURCHASES').reduce((s, i) => s + i.quantity, 0);
+      const factor = p.conversionFactor || 1;
+      const openingPieces = p.openingQty * factor;
+
+      const purQty = p.invoiceItems.filter(i => i.invoice.type === 'PURCHASES' && !i.invoice.isDeleted).reduce((s, i) => s + i.quantity, 0);
+      const purRetQty = p.invoiceItems.filter(i => i.invoice.type === 'PURCHASES_RETURN' && !i.invoice.isDeleted).reduce((s, i) => s + i.quantity, 0);
       const saleQty = allInvoices.filter(i => i.type === 'SALES').flatMap(i => i.items).filter(item => item.productId === p.id).reduce((s, i) => s + i.quantity, 0);
-      const currentQty = p.openingQty + purQty - saleQty;
+      const saleRetQty = allInvoices.filter(i => i.type === 'SALES_RETURN').flatMap(i => i.items).filter(item => item.productId === p.id).reduce((s, i) => s + i.quantity, 0);
+      
+      const currentQty = openingPieces + (purQty - purRetQty) - (saleQty - saleRetQty);
       const wac = productWAC.get(p.id) || 0;
       return { name: p.name, qty: currentQty, value: currentQty * wac, unit: p.unit || 'وحدة' };
     }).filter(i => Math.abs(i.qty) > 0.01);
@@ -66,15 +86,21 @@ export async function GET() {
 
     // Liabilities: Payables
     const supplierTransactions = persons.filter(p => p.type === 'SUPPLIER').map(p => {
-      const pPurchases = allInvoices.filter(i => i.type === 'PURCHASES' && i.personId === p.id).reduce((s, i) => s + i.netAmount, 0);
-      const pPaid = allPayments.filter(pay => pay.personId === p.id && pay.type === 'OUT').reduce((s, pay) => s + pay.amount, 0);
-      return { name: p.name, balance: p.initialBalance + pPurchases - pPaid };
+      return { name: p.name, balance: p.currentBalance };
     }).filter(s => Math.abs(s.balance) > 0.1);
     const currentPayables = supplierTransactions.reduce((s, c) => s + c.balance, 0);
 
     // Equity: Profit & Drawings
-    const totalSales = allInvoices.filter(i => i.type === 'SALES').reduce((s, i) => s + i.netAmount, 0);
-    const totalCOGS = allInvoices.filter(i => i.type === 'SALES').flatMap(i => i.items).reduce((s, item) => s + (item.quantity * (productWAC.get(item.productId) || 0)), 0);
+    const totalSales = allInvoices.filter(i => i.type === 'SALES').reduce((s, i) => s + i.netAmount, 0) - allInvoices.filter(i => i.type === 'SALES_RETURN').reduce((s, i) => s + i.netAmount, 0);
+    
+    let totalCOGS = 0;
+    allInvoices.filter(i => i.type === 'SALES' || i.type === 'SALES_RETURN').forEach(inv => {
+       inv.items.forEach(item => {
+         const q = inv.type === 'SALES' ? item.quantity : -item.quantity;
+         totalCOGS += (q * (productWAC.get(item.productId) || 0));
+       });
+    });
+
     const totalActualExpenses = allExpenses.filter(e => e.category !== 'مسحوبات شخصية').reduce((s, e) => s + e.amount, 0);
     const totalDrawings = allExpenses.filter(e => e.category === 'مسحوبات شخصية').reduce((s, e) => s + e.amount, 0);
     const netProfit2026 = totalSales - totalCOGS - totalActualExpenses;

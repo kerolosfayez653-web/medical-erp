@@ -102,7 +102,7 @@ export async function GET(
             invoiceType: inv.type,
             description: `فاتورة مبيعات ${inv.invoiceNumber || '#' + inv.id}${methodStr}`,
             debit: inv.netAmount,
-            credit: inv.paidAmount || 0,
+            credit: 0,
             balance: 0,
             totalAmount: inv.totalAmount,
             netAmount: inv.netAmount,
@@ -128,7 +128,7 @@ export async function GET(
             invoiceNumber: inv.invoiceNumber,
             invoiceType: inv.type,
             description: `فاتورة مشتريات ${inv.invoiceNumber || '#' + inv.id}${methodStr}`,
-            debit: inv.paidAmount || 0,
+            debit: 0,
             credit: inv.netAmount,
             balance: 0,
             totalAmount: inv.totalAmount,
@@ -193,9 +193,6 @@ export async function GET(
       const cur = monthlyMap.get(key) || { sales: 0, purchases: 0, payments: 0 };
       if (inv.type === 'SALES') cur.sales += inv.netAmount;
       if (inv.type === 'PURCHASES') cur.purchases += inv.netAmount;
-      if (typeof inv.paidAmount === 'number' && inv.paidAmount > 0) {
-        cur.payments += inv.paidAmount; // Add invoice exact collections to monthly
-      }
       monthlyMap.set(key, cur);
     }
     for (const pay of payments) {

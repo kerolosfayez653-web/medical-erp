@@ -412,6 +412,7 @@ export default function ReportsPage() {
                       <th>العميل/المورد</th>
                       <th>القيمة</th>
                       <th>الخصم</th>
+                      <th>التوصيل</th>
                       <th>الصافي</th>
                     </tr>
                   </thead>
@@ -423,6 +424,7 @@ export default function ReportsPage() {
                         <td>{inv.person?.name}</td>
                         <td>{fmt(inv.totalAmount)}</td>
                         <td style={{ color: 'var(--danger-color)' }}>{fmt(inv.discount)}</td>
+                        <td style={{ color: 'var(--success-color)' }}>{fmt(inv.deliveryFee)}</td>
                         <td style={{ fontWeight: 'bold' }}>{fmt(inv.netAmount)}</td>
                       </tr>
                     ))}
