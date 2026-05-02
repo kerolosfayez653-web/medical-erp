@@ -267,7 +267,8 @@ main {
     position: fixed;
     right: 0;
     top: 0;
-    height: 100vh;
+    height: 100dvh;
+    overflow-y: auto;
     transform: translateX(100%);
     box-shadow: -20px 0 50px rgba(0,0,0,0.3);
     z-index: 200;

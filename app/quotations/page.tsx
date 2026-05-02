@@ -196,6 +196,7 @@ export default function NewQuotationPage() {
               <div style={{ marginTop: '1rem', padding: '10px', background: 'rgba(16,185,129,0.1)', borderRadius: '8px' }}>
                 <strong>{selectedCustomer.name}</strong>
                 <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{selectedCustomer.phone}</div>
+                {selectedCustomer.address && <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '4px' }}>📍 {selectedCustomer.address}</div>}
               </div>
             )}
           </div>

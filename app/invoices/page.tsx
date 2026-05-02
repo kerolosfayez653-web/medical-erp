@@ -228,11 +228,12 @@ export default function InvoicesHistoryPage() {
                              <td style={{ padding: '12px 8px', fontWeight: 'bold' }}>
                                 <a 
                                   href={`/people/${inv.personId}/statement`} 
-                                  style={{ color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}
+                                  style={{ color: 'inherit', textDecoration: 'underline', cursor: 'pointer', display: 'block' }}
                                   onClick={(e) => e.stopPropagation()}
                                 >
                                   {inv.person?.name || '-'}
                                 </a>
+                                {inv.person?.phone && <div style={{ fontSize: '0.7rem', opacity: 0.7, marginTop: '4px' }}>📞 {inv.person.phone}</div>}
                              </td>
                              <td style={{ padding: '12px 8px', color: 'var(--danger-color)' }}>{safeFmt(inv.discount)}</td>
                              <td style={{ padding: '12px 8px', color: 'var(--success-color)' }}>{safeFmt(inv.deliveryFee)}</td>

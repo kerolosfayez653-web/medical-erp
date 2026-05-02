@@ -40,7 +40,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
         </button>
       </div>
       
-      <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+      <nav style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingBottom: '100px' }}>
         {menuItems.map((item) => {
           const isActive = pathname === item.path || (item.path !== '/' && pathname.startsWith(item.path));
           return (

@@ -214,14 +214,14 @@ export async function GET(request: Request) {
       const sales = getAgg(personSalesAgg, String(p.id)) - getAgg(personSalesRetAgg, String(p.id));
       const paid = getPersonPaid(String(p.id), 'IN') - getPersonPaid(String(p.id), 'OUT'); // Out meaning refunds
       const bal = p.initialBalance + sales - paid;
-      return { name: p.name, initial: p.initialBalance, sales, paid, balance: bal };
+      return { name: p.name, phone: p.phone, address: p.address, initial: p.initialBalance, sales, paid, balance: bal };
     }).filter(p => Math.abs(p.balance) > 0.1);
 
     const supplierDetails = persons.filter(p => p.type === 'SUPPLIER').map(p => {
       const purchases = getAgg(personPurAgg, String(p.id)) - getAgg(personPurRetAgg, String(p.id));
       const paid = getPersonPaid(String(p.id), 'OUT') - getPersonPaid(String(p.id), 'IN');
       const bal = p.initialBalance + purchases - paid;
-      return { name: p.name, initial: p.initialBalance, purchases, paid, balance: bal };
+      return { name: p.name, phone: p.phone, address: p.address, initial: p.initialBalance, purchases, paid, balance: bal };
     }).filter(p => Math.abs(p.balance) > 0.1);
 
     const receivables = initialCustomerDebt + ((allSalesBefore._sum.netAmount || 0) - (allSalesRetBefore._sum.netAmount || 0)) - 

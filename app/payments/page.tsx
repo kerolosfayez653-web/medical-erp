@@ -52,7 +52,7 @@ export default function PaymentsPage() {
 
   const fetchPayments = () => {
     setLoading(true);
-    fetch("/api/payments")
+    fetch(`/api/payments?cb=${Date.now()}`)
       .then(r => r.json())
       .then(d => {
         if (d.success) setPayments(d.data);
@@ -61,7 +61,7 @@ export default function PaymentsPage() {
   };
 
   const fetchPersons = () => {
-    fetch("/api/people")
+    fetch(`/api/people?cb=${Date.now()}`)
       .then(r => r.json())
       .then(d => {
         if (d.success) setPersons(d.data);

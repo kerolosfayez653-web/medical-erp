@@ -25,25 +25,41 @@ export async function GET() {
     // High performance aggregation for dashboard needs
     const [invoiceAgg, paymentAgg] = await Promise.all([
       prisma.invoice.groupBy({
-        by: ['personId'],
+        by: ['personId', 'type'],
+        where: { isDeleted: false },
         _sum: { netAmount: true }
       }),
       prisma.payment.groupBy({
-        by: ['personId'],
+        by: ['personId', 'type'],
+        where: { isDeleted: false },
         _sum: { amount: true }
       })
     ]);
 
-    const invMap = new Map(invoiceAgg.map(i => [i.personId, i._sum.netAmount || 0]));
-    const payMap = new Map(paymentAgg.map(p => [p.personId, p._sum.amount || 0]));
+    const getAgg = (pid: number, type: string, arr: any[], sumField: string) => {
+      return arr.find(a => a.personId === pid && a.type === type)?._sum?.[sumField] || 0;
+    };
 
-    const data = people.map(p => ({
-      ...p,
-      totalInvoiced: Number(invMap.get(p.id) || 0),
-      totalPaid: Number(payMap.get(p.id) || 0),
-      lastInvoice: p.invoices[0] || null,
-      invoices: undefined,
-    }));
+    const data = people.map(p => {
+      // Invoices: SALES items are positive, SALES_RETURN are negative for customers (reversed for suppliers)
+      const sales = getAgg(p.id, 'SALES', invoiceAgg, 'netAmount') - getAgg(p.id, 'SALES_RETURN', invoiceAgg, 'netAmount');
+      const purchases = getAgg(p.id, 'PURCHASES', invoiceAgg, 'netAmount') - getAgg(p.id, 'PURCHASES_RETURN', invoiceAgg, 'netAmount');
+      
+      // Payments: IN is money we received, OUT is money we paid
+      const payIn = getAgg(p.id, 'IN', paymentAgg, 'amount');
+      const payOut = getAgg(p.id, 'OUT', paymentAgg, 'amount');
+
+      const totalInvoiced = p.type === 'CUSTOMER' ? sales : purchases;
+      const totalPaid = p.type === 'CUSTOMER' ? (payIn - payOut) : (payOut - payIn);
+
+      return {
+        ...p,
+        totalInvoiced,
+        totalPaid,
+        lastInvoice: p.invoices[0] || null,
+        invoices: undefined,
+      };
+    });
 
     return NextResponse.json({ success: true, data });
   } catch (error) {

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
+import * as XLSX from "xlsx";
 
 interface Totals {
   totalSales: number;
@@ -106,6 +107,150 @@ export default function ReportsPage() {
     setShowModal(true);
   };
 
+  const exportToExcel = (rows: Record<string, any>[], sheetName: string, fileName: string) => {
+    if (!rows || rows.length === 0) { alert('لا توجد بيانات للتصدير'); return; }
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const range = XLSX.utils.decode_range(ws['!ref'] || 'A1:A1');
+    ws['!autofilter'] = { ref: XLSX.utils.encode_range(range) };
+    if (!ws['!views']) ws['!views'] = [];
+    ws['!views'].push({ RTL: true });
+    XLSX.utils.book_append_sheet(wb, ws, sheetName);
+    XLSX.writeFile(wb, fileName);
+  };
+
+  const periodLabel = month === 'ALL' ? String(year) : `${MONTHS_AR[month]}_${year}`;
+
+  const exportIncomeStatement = () => {
+    const rows = [
+      { 'البند': 'إجمالي قيمة المنتجات', 'المبلغ (ج.م)': (totals?.totalSales || 0) - (totals?.totalDeliveryRevenue || 0) + (totals?.totalDiscount || 0) },
+      { 'البند': '(+) رسوم التوصيل المحصلة', 'المبلغ (ج.م)': totals?.totalDeliveryRevenue || 0 },
+      { 'البند': '(-) إجمالي الخصومات الممنوحة', 'المبلغ (ج.م)': totals?.totalDiscount || 0 },
+      { 'البند': 'صافي المبيعات (Net Sales)', 'المبلغ (ج.م)': totals?.totalSales || 0 },
+      { 'البند': '(-) تكلفة البضاعة المباعة (WAC)', 'المبلغ (ج.م)': totals?.totalCOGS || 0 },
+      { 'البند': 'مجمل الربح (Gross Profit)', 'المبلغ (ج.م)': totals?.grossProfit || 0 },
+      { 'البند': '---', 'المبلغ (ج.م)': '---' },
+      ...Object.entries(expenseBreakdown).map(([cat, amt]) => ({ 'البند': `مصروفات: ${cat}`, 'المبلغ (ج.م)': amt })),
+      { 'البند': 'إجمالي المصروفات التشغيلية', 'المبلغ (ج.م)': totals?.totalExpenses || 0 },
+      { 'البند': '===', 'المبلغ (ج.م)': '===' },
+      { 'البند': 'صافي الربح / الخسارة', 'المبلغ (ج.م)': totals?.netProfit || 0 },
+    ];
+    exportToExcel(rows, 'قائمة الدخل', `قائمة_الدخل_${periodLabel}.xlsx`);
+  };
+
+  const exportCashFlow = () => {
+    const rows = [
+      { 'البند': `رصيد نقدية أول المدة (١/١/${year})`, 'المبلغ (ج.م)': totals?.openingCashBalance || 0 },
+      { 'البند': '(+) إجمالي المقبوضات (تحصيل عملاء)', 'المبلغ (ج.م)': totals?.totalPaymentsIn || 0 },
+      { 'البند': '(-) إجمالي المدفوعات (موردين ومصاريف)', 'المبلغ (ج.م)': (totals?.totalPaymentsOut || 0) + (totals?.totalExpenses || 0) },
+      { 'البند': 'رصيد النقدية النهائي', 'المبلغ (ج.م)': (totals?.openingCashBalance || 0) + (totals?.totalPaymentsIn || 0) - (totals?.totalPaymentsOut || 0) - (totals?.totalExpenses || 0) },
+    ];
+    exportToExcel(rows, 'التدفقات النقدية', `التدفقات_النقدية_${periodLabel}.xlsx`);
+  };
+
+  const exportInventorySummary = () => {
+    const rows = [
+      { 'البند': `رصيد أول المدة (١/١/${year})`, 'المبلغ (ج.م)': totals?.totalOpeningValue || 0 },
+      { 'البند': 'إجمالي المشتريات (الإضافة)', 'المبلغ (ج.م)': totals?.totalPurchases || 0 },
+      { 'البند': 'تكلفة البضاعة الخارجة (مباعة)', 'المبلغ (ج.م)': totals?.totalCOGS || 0 },
+      { 'البند': 'قيمة المخزون بنهاية الفترة', 'المبلغ (ج.م)': (totals?.totalOpeningValue || 0) + (totals?.totalPurchases || 0) - (totals?.totalCOGS || 0) },
+    ];
+    exportToExcel(rows, 'حالة المخزون', `حالة_المخزون_${periodLabel}.xlsx`);
+  };
+
+  const exportBalanceSheet = () => {
+    const rows = [
+      { 'القسم': 'الأصول', 'البند': 'الخزينة (النقدية المتوفرة)', 'المبلغ (ج.م)': balanceSheet?.cashOnHand || 0 },
+      { 'القسم': 'الأصول', 'البند': 'مديونيات العملاء (Receivables)', 'المبلغ (ج.م)': balanceSheet?.receivables || 0 },
+      { 'القسم': 'الأصول', 'البند': 'مخزون السلع (Inventory)', 'المبلغ (ج.م)': balanceSheet?.inventoryValue || 0 },
+      { 'القسم': 'الأصول', 'البند': '*** إجمالي الأصول ***', 'المبلغ (ج.م)': balanceSheet?.totalAssets || 0 },
+      { 'القسم': '', 'البند': '', 'المبلغ (ج.م)': '' },
+      { 'القسم': 'الخصوم', 'البند': 'مديونيات الموردين (Payables)', 'المبلغ (ج.م)': balanceSheet?.payables || 0 },
+      { 'القسم': 'حقوق الملكية', 'البند': 'الأرباح المرحلة', 'المبلغ (ج.م)': balanceSheet?.previousProfit || 0 },
+      { 'القسم': 'حقوق الملكية', 'البند': 'صافي ربح العام الحالي', 'المبلغ (ج.م)': balanceSheet?.currentProfit || 0 },
+      { 'القسم': 'حقوق الملكية', 'البند': 'رأس المال الموازن', 'المبلغ (ج.م)': (balanceSheet?.totalAssets || 0) - (balanceSheet?.payables || 0) - (balanceSheet?.previousProfit || 0) - (balanceSheet?.currentProfit || 0) },
+      { 'القسم': '', 'البند': '*** إجمالي الخصوم وحقوق الملكية ***', 'المبلغ (ج.م)': balanceSheet?.totalAssets || 0 },
+    ];
+    exportToExcel(rows, 'المركز المالي', `المركز_المالي_${periodLabel}.xlsx`);
+  };
+
+  const exportModalData = () => {
+    let rows: Record<string, any>[] = [];
+    if (modalType === 'invoices') {
+      rows = modalData.map((inv: any) => ({
+        'التاريخ': new Date(inv.date).toLocaleDateString('ar-EG'),
+        'رقم الفاتورة': inv.invoiceNumber || '',
+        'العميل/المورد': inv.person?.name || '',
+        'القيمة': inv.totalAmount || 0,
+        'الخصم': inv.discount || 0,
+        'التوصيل': inv.deliveryFee || 0,
+        'الصافي': inv.netAmount || 0,
+      }));
+    } else if (modalType === 'expenses') {
+      rows = modalData.map((exp: any) => ({
+        'التاريخ': new Date(exp.date).toLocaleDateString('ar-EG'),
+        'التصنيف': exp.category || '',
+        'البيان': exp.description || '',
+        'المبلغ': exp.amount || 0,
+        'الوسيلة': exp.paymentMethod || '',
+      }));
+    } else if (modalType === 'cash') {
+      rows = modalData.map((pay: any) => ({
+        'التاريخ': new Date(pay.date).toLocaleDateString('ar-EG'),
+        'الشخص': pay.person?.name || '',
+        'النوع': pay.type === 'IN' ? 'إيداع / تحصيل' : 'صرف / دفع',
+        'المبلغ (ج.م)': pay.amount || 0,
+        'ملاحظات': pay.notes || '',
+      }));
+    } else if (modalType === 'customers') {
+      rows = modalData.map((c: any) => ({
+        'اسم العميل': c.name || '',
+        'التليفون': c.phone || '',
+        'العنوان': c.address || '',
+        'الرصيد الافتتاحي': c.initial || 0,
+        'إجمالي المبيعات': c.sales || 0,
+        'إجمالي التحصيل': c.paid || 0,
+        'الرصيد الحالي': c.balance || 0,
+      }));
+    } else if (modalType === 'suppliers') {
+      rows = modalData.map((s: any) => ({
+        'اسم المورد': s.name || '',
+        'التليفون': s.phone || '',
+        'العنوان': s.address || '',
+        'الرصيد الافتتاحي': s.initial || 0,
+        'إجمالي المشتريات': s.purchases || 0,
+        'إجمالي المدفوعات': s.paid || 0,
+        'الرصيد الحالي': s.balance || 0,
+      }));
+    } else if (modalType === 'inventory') {
+      rows = modalData.map((p: any) => ({
+        'اسم الصنف': p.name || '',
+        'الكمية المتاحة': p.qty || 0,
+        'متوسط التكلفة (WAC)': Number((p.wac || 0).toFixed(2)),
+        'إجمالي القيمة (ج.م)': Number((p.value || 0).toFixed(2)),
+      }));
+    } else if (modalType === 'profit_summary') {
+      rows = [
+        { 'البند': 'إجمالي المبيعات', 'المبلغ (ج.م)': totals?.totalSales || 0 },
+        { 'البند': '(-) تكلفة البضاعة المباعة (WAC)', 'المبلغ (ج.م)': totals?.totalCOGS || 0 },
+        { 'البند': '(=) مجمل الربح', 'المبلغ (ج.م)': totals?.grossProfit || 0 },
+        { 'البند': '(-) إجمالي المصاريف التشغيلية', 'المبلغ (ج.م)': totals?.totalExpenses || 0 },
+        { 'البند': '(=) صافي الربح النهائي', 'المبلغ (ج.م)': totals?.netProfit || 0 },
+      ];
+    } else if (modalType === 'equity_breakdown') {
+      rows = [
+        { 'البند': 'إجمالي الأصول', 'المبلغ (ج.م)': balanceSheet?.totalAssets || 0 },
+        { 'البند': '(-) إجمالي الخصوم', 'المبلغ (ج.م)': balanceSheet?.payables || 0 },
+        { 'البند': '(=) صافي حقوق الملكية', 'المبلغ (ج.م)': (balanceSheet?.totalAssets || 0) - (balanceSheet?.payables || 0) },
+        { 'البند': 'الأرباح المرحلة', 'المبلغ (ج.م)': balanceSheet?.previousProfit || 0 },
+        { 'البند': 'صافي ربح العام الحالي', 'المبلغ (ج.م)': balanceSheet?.currentProfit || 0 },
+        { 'البند': 'رأس المال المكمل', 'المبلغ (ج.م)': (balanceSheet?.totalAssets || 0) - (balanceSheet?.payables || 0) - (balanceSheet?.previousProfit || 0) - (balanceSheet?.currentProfit || 0) },
+      ];
+    }
+    const safeTitle = modalTitle.replace(/[/\\?*[\]]/g, '_');
+    exportToExcel(rows, safeTitle.substring(0, 31), `${safeTitle}_${periodLabel}.xlsx`);
+  };
+
   if (loading) return (
     <div style={{ padding: '5rem', textAlign: 'center', background: 'var(--bg-color)', minHeight: '100vh', color: 'var(--text-secondary)' }}>
       <div className="loader" style={{ marginBottom: '1rem' }}></div>
@@ -155,9 +300,9 @@ export default function ReportsPage() {
           
           {/* Statement 1: Income Statement */}
           <div className="glass-panel" style={{ padding: '2rem', flex: 1 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid var(--accent-color)', paddingBottom: '0.8rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid var(--accent-color)', paddingBottom: '0.8rem', flexWrap: 'wrap', gap: '0.5rem' }}>
               <h2 style={{ margin: 0 }}>📊 قائمة الأرباح والخسائر</h2>
-              <span style={{ fontSize: '0.8rem', opacity: 0.6 }}>القيمة بالجنيه المصري (ج.م)</span>
+              <button onClick={exportIncomeStatement} className="btn" style={exportBtnStyle}>📥 تصدير Excel</button>
             </div>
             
             <div 
@@ -250,7 +395,10 @@ export default function ReportsPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
             
             <div className="glass-panel" style={{ padding: '2rem', borderLeft: '5px solid var(--success-color)' }}>
-              <h2 style={{ borderBottom: '2px solid var(--success-color)', paddingBottom: '0.8rem', marginBottom: '1.5rem' }}>💰 ملخص التدفقات النقدية</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--success-color)', paddingBottom: '0.8rem', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h2 style={{ margin: 0 }}>💰 ملخص التدفقات النقدية</h2>
+                <button onClick={exportCashFlow} className="btn" style={exportBtnStyle}>📥 تصدير Excel</button>
+              </div>
               
               <div style={reportRow}>
                 <span>رصيد نقدية أول المدة (١/١/{year})</span>
@@ -285,7 +433,10 @@ export default function ReportsPage() {
             </div>
 
             <div className="glass-panel" style={{ padding: '2rem', borderLeft: '5px solid var(--warning-color)' }}>
-              <h2 style={{ borderBottom: '2px solid var(--warning-color)', paddingBottom: '0.8rem', marginBottom: '1.5rem' }}>📦 حالة المخزون والسلع</h2>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--warning-color)', paddingBottom: '0.8rem', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h2 style={{ margin: 0 }}>📦 حالة المخزون والسلع</h2>
+                <button onClick={exportInventorySummary} className="btn" style={exportBtnStyle}>📥 تصدير Excel</button>
+              </div>
               <div style={reportRow}>
                 <span>رصيد أول المدة (١/١/{year})</span>
                 <span>{fmt(totals?.totalOpeningValue || 0)}</span>
@@ -312,11 +463,14 @@ export default function ReportsPage() {
       ) : (
         /* Statement 3: Balance Sheet (Snapshot at EndDate) */
         <div className="glass-panel" style={{ padding: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '3px solid var(--accent-color)', paddingBottom: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', borderBottom: '3px solid var(--accent-color)', paddingBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
             <h2 style={{ margin: 0 }}>⚖️ قائمة المركز المالي (الميزانية العمومية)</h2>
-            <div style={{ textAlign: 'left' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>كما هي في {month === 'ALL' ? `٣١/١٢/${year}` : `${new Date(year, parseInt(month), 0).toLocaleDateString("ar-EG")}`}</div>
-              <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>حسابات تراكمية حتى تاريخ التقرير</div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+              <div style={{ textAlign: 'left' }}>
+                <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>كما هي في {month === 'ALL' ? `٣١/١٢/${year}` : `${new Date(year, parseInt(month), 0).toLocaleDateString("ar-EG")}`}</div>
+                <div style={{ fontSize: '0.8rem', opacity: 0.6 }}>حسابات تراكمية حتى تاريخ التقرير</div>
+              </div>
+              <button onClick={exportBalanceSheet} className="btn" style={exportBtnStyle}>📥 تصدير Excel</button>
             </div>
           </div>
 
@@ -398,7 +552,10 @@ export default function ReportsPage() {
           <div className="glass-panel" style={{ ...modalContent, padding: '1.5rem' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.4rem' }}>🔍 {modalTitle}</h2>
-              <button onClick={() => setShowModal(false)} className="btn btn-primary" style={{ padding: '0.6rem 1.2rem', background: 'var(--danger-color)' }}>إغلاق</button>
+              <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <button onClick={exportModalData} className="btn" style={exportBtnStyle}>📥 Excel</button>
+                <button onClick={() => setShowModal(false)} className="btn btn-primary" style={{ padding: '0.6rem 1.2rem', background: 'var(--danger-color)' }}>إغلاق</button>
+              </div>
             </div>
 
             <div style={{ maxHeight: '60vh', overflowY: 'auto' }}>
@@ -505,6 +662,7 @@ export default function ReportsPage() {
                   <thead>
                     <tr>
                       <th>اسم العميل</th>
+                      <th>العنوان</th>
                       <th>الرصيد الافتتاحي</th>
                       <th>إجمالي المبيعات (+)</th>
                       <th>إجمالي التحصيل (-)</th>
@@ -514,7 +672,11 @@ export default function ReportsPage() {
                   <tbody>
                     {modalData.map((c, idx) => (
                       <tr key={idx}>
-                        <td style={{ fontWeight: 'bold' }}>{c.name}</td>
+                        <td style={{ fontWeight: 'bold' }}>
+                          <div>{c.name}</div>
+                          {c.phone && <div style={{ fontSize: '0.7rem', opacity: 0.7 }}>📞 {c.phone}</div>}
+                        </td>
+                        <td style={{ fontSize: '0.75rem' }}>{c.address || '-'}</td>
                         <td>{fmt(c.initial)}</td>
                         <td style={{ color: 'var(--success-color)' }}>{fmt(c.sales)}</td>
                         <td style={{ color: 'var(--danger-color)' }}>{fmt(c.paid)}</td>
@@ -532,6 +694,7 @@ export default function ReportsPage() {
                     <thead>
                       <tr>
                         <th>اسم المورد</th>
+                        <th>العنوان</th>
                         <th>الرصيد الافتتاحي</th>
                         <th>إجمالي المشتريات (+)</th>
                         <th>إجمالي المدفوعات (-)</th>
@@ -541,7 +704,11 @@ export default function ReportsPage() {
                     <tbody>
                       {modalData.map((s, idx) => (
                         <tr key={idx}>
-                          <td style={{ fontWeight: 'bold' }}>{s.name}</td>
+                          <td style={{ fontWeight: 'bold' }}>
+                            <div>{s.name}</div>
+                            {s.phone && <div style={{ fontSize: '0.7rem', opacity: 0.7 }}>📞 {s.phone}</div>}
+                          </td>
+                          <td style={{ fontSize: '0.75rem' }}>{s.address || '-'}</td>
                           <td>{fmt(s.initial)}</td>
                           <td style={{ color: 'var(--success-color)' }}>{fmt(s.purchases)}</td>
                           <td style={{ color: 'var(--danger-color)' }}>{fmt(s.paid)}</td>
@@ -730,4 +897,16 @@ const detailTable: React.CSSProperties = {
   borderCollapse: 'collapse',
   marginTop: '1rem',
   fontSize: '0.9rem'
+};
+
+const exportBtnStyle: React.CSSProperties = {
+  padding: '6px 14px',
+  fontSize: '0.8rem',
+  background: 'rgba(16, 185, 129, 0.15)',
+  border: '1px solid rgba(16, 185, 129, 0.3)',
+  color: '#34d399',
+  borderRadius: '8px',
+  cursor: 'pointer',
+  fontWeight: '600',
+  whiteSpace: 'nowrap',
 };
