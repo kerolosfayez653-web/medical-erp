@@ -44,11 +44,18 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
       // 1. REVERSE OLD EFFECTS
       // 1.1 Reverse Balance
       if (oldInvoice.personId) {
-        const oldRemaining = oldInvoice.totalAmount - oldInvoice.paidAmount;
+        const oldRemaining = oldInvoice.netAmount - oldInvoice.paidAmount;
         if (oldRemaining !== 0) {
+          const oldPerson = await tx.person.findUnique({ where: { id: oldInvoice.personId } });
+          let oldReverseChange = 0;
+          if (oldPerson?.type === 'CUSTOMER') {
+             oldReverseChange = (oldInvoice.type === 'SALES' || oldInvoice.type === 'SALES_RETURN') ? -oldRemaining : oldRemaining;
+          } else {
+             oldReverseChange = (oldInvoice.type === 'PURCHASES' || oldInvoice.type === 'PURCHASES_RETURN') ? -oldRemaining : oldRemaining;
+          }
           await tx.person.update({
             where: { id: oldInvoice.personId },
-            data: { currentBalance: { decrement: oldRemaining } }
+            data: { currentBalance: { increment: oldReverseChange } }
           });
         }
       }
@@ -217,7 +224,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       // 1. REVERSE EFFECTS
       // 1.1 Reverse Balance
       if (invoice.personId) {
-        const remaining = invoice.totalAmount - invoice.paidAmount;
+        const remaining = invoice.netAmount - invoice.paidAmount;
         if (remaining !== 0) {
           let reverseChange = 0;
           if (invoice.person?.type === 'CUSTOMER') {

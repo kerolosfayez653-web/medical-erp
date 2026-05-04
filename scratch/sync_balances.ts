@@ -1,90 +1,80 @@
-import prisma from '../lib/prisma';
-import * as xlsx from 'xlsx';
-
-const EXCEL_FILE = 'سيستم الفواتير والمخزون.xlsx';
-const SHEET_NAME = 'مديونيات العملاء و الموردين';
+import { PrismaClient } from '@prisma/client';
+const prisma = new PrismaClient();
 
 async function syncBalances() {
-  try {
-    console.log('--- STARTING GLOBAL BALANCE SYNCHRONIZATION ---');
-
-    console.log(`Reading Excel: ${EXCEL_FILE}...`);
-    const wb = xlsx.readFile(EXCEL_FILE);
-    const sheet = wb.Sheets[SHEET_NAME];
-    const excelData = xlsx.utils.sheet_to_json(sheet, { range: 7, header: 1 }) as any[][];
-
-    // Create a map for quick lookup: Name -> FinalBalance
-    const excelMap = new Map<string, number>();
-    for (const row of excelData) {
-      if (!row || !row[0]) continue;
-      const name = String(row[0]).trim();
-      const finalBalance = parseFloat(row[5]) || 0;
-      excelMap.set(name, finalBalance);
-    }
-
-    console.log(`Loaded ${excelMap.size} records from Excel.`);
-
-    const people = await prisma.person.findMany({
-      include: {
-        invoices: { where: { isDeleted: false } },
-        payments: { where: { isDeleted: false } }
-      }
+  console.log('--- Starting Person Balances Synchronization ---');
+  
+  const persons = await prisma.person.findMany();
+  
+  for (const person of persons) {
+    // Get all invoices for this person
+    const invoices = await prisma.invoice.findMany({
+      where: { personId: person.id, isDeleted: false },
     });
 
-    console.log(`Auditing ${people.length} people in database...`);
+    // Get all payments
+    const payments = await prisma.payment.findMany({
+      where: { personId: person.id, isDeleted: false },
+    });
 
-    let updatedCount = 0;
-    let missingCount = 0;
+    const entries: Array<{ debit: number; credit: number }> = [];
 
-    for (const p of people) {
-      const excelBalance = excelMap.get(p.name.trim());
-      if (excelBalance === undefined) {
-        // console.warn(`! Missing in Excel: ${p.name}`);
-        missingCount++;
-        continue;
-      }
-
-      // Calculate total system activity (ignoring existing initialBalance)
-      let activity = 0;
-      for (const inv of p.invoices) {
-        if (inv.type === 'SALES' || inv.type === 'PURCHASES_RETURN') {
-          activity += inv.netAmount;
-        } else if (inv.type === 'PURCHASES' || inv.type === 'SALES_RETURN') {
-          activity -= inv.netAmount;
-        }
-      }
-
-      for (const pay of p.payments) {
-        if (pay.type === 'IN') {
-          activity -= pay.amount;
-        } else if (pay.type === 'OUT') {
-          activity += pay.amount;
-        }
-      }
-
-      // Required Initial = Final - Activity
-      const newInitial = excelBalance - activity;
-
-      await prisma.person.update({
-        where: { id: p.id },
-        data: {
-          initialBalance: newInitial,
-          currentBalance: excelBalance
-        }
+    // Opening balance entry
+    if (person.initialBalance !== 0) {
+      const isCustomer = person.type === 'CUSTOMER';
+      entries.push({
+        debit: isCustomer 
+          ? (person.initialBalance > 0 ? person.initialBalance : 0)
+          : (person.initialBalance < 0 ? Math.abs(person.initialBalance) : 0),
+        credit: isCustomer
+          ? (person.initialBalance < 0 ? Math.abs(person.initialBalance) : 0)
+          : (person.initialBalance > 0 ? person.initialBalance : 0),
       });
-      updatedCount++;
     }
 
-    console.log('\n--- SYNC SUMMARY ---');
-    console.log(`Successfully synced: ${updatedCount}`);
-    console.log(`Missed (not in Excel): ${missingCount}`);
-    console.log('--- SYNC COMPLETE ---');
+    // Merge invoices
+    for (const inv of invoices) {
+      if (inv.type === 'SALES') {
+        entries.push({ debit: inv.netAmount, credit: 0 });
+      } else if (inv.type === 'PURCHASES') {
+        entries.push({ debit: 0, credit: inv.netAmount });
+      }
+    }
 
-  } catch (error) {
-    console.error('Error during synchronization:', error);
-  } finally {
-    await prisma.$disconnect();
+    // Merge payments
+    for (const pay of payments) {
+      if (pay.type === 'IN') {
+        entries.push({ debit: 0, credit: pay.amount });
+      } else {
+        entries.push({ debit: pay.amount, credit: 0 });
+      }
+    }
+
+    // Compute running balance
+    let runningBalance = 0; 
+    for (const entry of entries) {
+      if (person.type === 'CUSTOMER') {
+        runningBalance += entry.debit - entry.credit;
+      } else {
+        runningBalance += entry.credit - entry.debit;
+      }
+    }
+
+    // Update if different
+    // To handle floating point issues, let's round to 2 decimals
+    const roundedRunningBalance = Math.round(runningBalance * 100) / 100;
+    const roundedCurrentBalance = Math.round(person.currentBalance * 100) / 100;
+
+    if (roundedRunningBalance !== roundedCurrentBalance) {
+      console.log(`Fixing ${person.name} (${person.type}): DB=${roundedCurrentBalance} -> Correct=${roundedRunningBalance}`);
+      await prisma.person.update({
+        where: { id: person.id },
+        data: { currentBalance: roundedRunningBalance }
+      });
+    }
   }
+
+  console.log('--- Sync Complete ---');
 }
 
-syncBalances();
+syncBalances().catch(console.error);
