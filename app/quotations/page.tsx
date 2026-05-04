@@ -31,6 +31,7 @@ export default function NewQuotationPage() {
   const [deliveryFee, setDeliveryFee]     = useState("0");
   const [notes, setNotes]                 = useState("");
   const [expiryDate, setExpiryDate]       = useState("");
+  const [quotationDate, setQuotationDate] = useState(new Date().toISOString().split('T')[0]);
   const [loading, setLoading]             = useState(false);
   const [searchProduct, setSearchProduct] = useState("");
   const [custSearch, setCustSearch]       = useState("");
@@ -56,6 +57,7 @@ export default function NewQuotationPage() {
         if (data.deliveryFee) setDeliveryFee(data.deliveryFee);
         if (data.notes) setNotes(data.notes);
         if (data.expiryDate) setExpiryDate(data.expiryDate);
+        if (data.quotationDate) setQuotationDate(data.quotationDate);
       } catch (e) { console.error("Error restoring quotation draft", e); }
     }
   }, []);
@@ -63,10 +65,10 @@ export default function NewQuotationPage() {
 
   useEffect(() => {
     if (cart.length > 0 || selectedCustomerId || discount !== "0" || deliveryFee !== "0" || notes || expiryDate) {
-      const data = { cart, selectedCustomerId, custSearch, discount, deliveryFee, notes, expiryDate };
+      const data = { cart, selectedCustomerId, custSearch, discount, deliveryFee, notes, expiryDate, quotationDate };
       localStorage.setItem("draft_quotation", JSON.stringify(data));
     }
-  }, [cart, selectedCustomerId, custSearch, discount, deliveryFee, notes, expiryDate]);
+  }, [cart, selectedCustomerId, custSearch, discount, deliveryFee, notes, expiryDate, quotationDate]);
 
 
   const selectedCustomer = customers.find(c => String(c.id) === selectedCustomerId) || null;
@@ -120,7 +122,8 @@ export default function NewQuotationPage() {
         discount: discountVal, 
         deliveryFee: deliveryVal, 
         notes, 
-        expiryDate 
+        expiryDate,
+        quotationDate
       }),
     });
     if (res.ok) {
@@ -134,6 +137,7 @@ export default function NewQuotationPage() {
       setDeliveryFee("0");
       setNotes("");
       setExpiryDate("");
+      setQuotationDate(new Date().toISOString().split('T')[0]);
       setSelectedCustomerId("");
       setCustSearch("");
     } else {
@@ -176,8 +180,7 @@ export default function NewQuotationPage() {
                   borderRadius: '10px', marginTop: '5px', zIndex: 100, maxHeight: '200px', overflowY: 'auto'
                 }}>
                   {filteredCustomersList.map(c => (
-                    <div 
-                      key={c.id} 
+                    <div key={c.id} 
                       onClick={() => {
                         setSelectedCustomerId(String(c.id));
                         setCustSearch(c.name);
@@ -185,7 +188,8 @@ export default function NewQuotationPage() {
                       style={{ padding: '10px', cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)' }}
                       className="hover-item"
                     >
-                      {c.name}
+                      <div style={{ fontWeight: 'bold' }}>{c.name}</div>
+                      {c.phone && <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>📞 {c.phone}</div>}
                     </div>
                   ))}
                 </div>
@@ -193,10 +197,20 @@ export default function NewQuotationPage() {
             </div>
 
             {selectedCustomer && (
-              <div style={{ marginTop: '1rem', padding: '10px', background: 'rgba(16,185,129,0.1)', borderRadius: '8px' }}>
-                <strong>{selectedCustomer.name}</strong>
-                <div style={{ fontSize: '0.8rem', opacity: 0.7 }}>{selectedCustomer.phone}</div>
-                {selectedCustomer.address && <div style={{ fontSize: '0.8rem', opacity: 0.7, marginTop: '4px' }}>📍 {selectedCustomer.address}</div>}
+              <div style={{ marginTop: '1rem', padding: '14px', background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '10px' }}>
+                <div style={{ fontWeight: 'bold', fontSize: '1.05rem', marginBottom: '8px', color: 'var(--accent-color)' }}>
+                  {selectedCustomer.name}
+                </div>
+                {selectedCustomer.phone && (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    📞 {selectedCustomer.phone}
+                  </div>
+                )}
+                {selectedCustomer.address && (
+                  <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                    📍 {selectedCustomer.address}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -205,6 +219,10 @@ export default function NewQuotationPage() {
           <div className="glass-panel">
             <h3 style={{ marginBottom: "1rem" }}>📝 تفاصيل العرض</h3>
             <div className="input-group">
+              <label>📅 تاريخ العرض</label>
+              <input type="date" value={quotationDate} onChange={e => setQuotationDate(e.target.value)} className="input-field" />
+            </div>
+            <div className="input-group" style={{ marginTop: '1rem' }}>
               <label>تاريخ الانتهاء (اختياري)</label>
               <input type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} className="input-field" />
             </div>

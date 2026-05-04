@@ -17,7 +17,8 @@ async function generatePurchaseInvoiceNumber(): Promise<string> {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { personId, items, paidAmount, discount = 0, deliveryFee = 0, paymentMethod } = body;
+    const { personId, items, paidAmount, discount = 0, deliveryFee = 0, paymentMethod, invoiceDate } = body;
+    const dateToUse = invoiceDate ? new Date(invoiceDate + 'T00:00:00') : new Date();
 
     let itemsTotal = 0;
     for (const item of items) {
@@ -36,6 +37,7 @@ export async function POST(request: Request) {
           type: 'PURCHASES',
           invoiceNumber,
           personId: personId ? parseInt(personId) : null,
+          date: dateToUse,
           totalAmount: itemsTotal,
           netAmount: total,
           paidAmount: parseFloat(paidAmount) || 0,
@@ -79,6 +81,7 @@ export async function POST(request: Request) {
             amount: parseFloat(paidAmount),
             type: 'OUT',
             method: paymentMethod || 'كاش',
+            date: dateToUse,
             notes: 'تسديد دفعة من المشتريات'
           }
         });

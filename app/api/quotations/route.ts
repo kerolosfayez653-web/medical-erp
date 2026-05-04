@@ -17,7 +17,8 @@ async function generateQuotationNumber(): Promise<string> {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { personId, items, discount = 0, deliveryFee = 0, notes, expiryDate } = body;
+    const { personId, items, discount = 0, deliveryFee = 0, notes, expiryDate, quotationDate } = body;
+    const dateToUse = quotationDate ? new Date(quotationDate + 'T00:00:00') : new Date();
 
     let itemsTotal = 0;
     for (const item of items) {
@@ -31,6 +32,7 @@ export async function POST(request: Request) {
       data: {
         quotationNumber,
         personId: personId ? Number(personId) : null,
+        date: dateToUse,
         totalAmount: itemsTotal,
         discount: parseFloat(discount) || 0,
         deliveryFee: parseFloat(deliveryFee) || 0,

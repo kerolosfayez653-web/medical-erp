@@ -42,6 +42,7 @@ function SalesPageContent() {
   const [paidAmount, setPaidAmount]       = useState("0");
   const [discount, setDiscount]           = useState("0");
   const [deliveryFee, setDeliveryFee]     = useState("0");
+  const [invoiceDate, setInvoiceDate]     = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState("كاش");
   const [loading, setLoading]             = useState(false);
   const [searchProduct, setSearchProduct] = useState("");
@@ -49,6 +50,7 @@ function SalesPageContent() {
   const [custSearch, setCustSearch]       = useState("");
   const [personPhone, setPersonPhone]     = useState("");
   const [personAddress, setPersonAddress] = useState("");
+  const [editingContact, setEditingContact] = useState(false);
   const [lastAddedId, setLastAddedId]     = useState<number | null>(null);
 
   const searchParams = useSearchParams();
@@ -98,6 +100,7 @@ function SalesPageContent() {
           if (data.discount) setDiscount(data.discount);
           if (data.deliveryFee) setDeliveryFee(data.deliveryFee);
           if (data.paidAmount) setPaidAmount(data.paidAmount);
+          if (data.invoiceDate) setInvoiceDate(data.invoiceDate);
         } catch (e) { console.error("Error restoring sale draft", e); }
       }
     }
@@ -105,10 +108,10 @@ function SalesPageContent() {
 
   useEffect(() => {
     if (cart.length > 0 || selectedCustomerId || discount !== "0" || deliveryFee !== "0" || paidAmount !== "0") {
-      const data = { cart, selectedCustomerId, custSearch, discount, deliveryFee, paidAmount };
+      const data = { cart, selectedCustomerId, custSearch, discount, deliveryFee, paidAmount, invoiceDate };
       localStorage.setItem("draft_sale", JSON.stringify(data));
     }
-  }, [cart, selectedCustomerId, custSearch, discount, deliveryFee, paidAmount]);
+  }, [cart, selectedCustomerId, custSearch, discount, deliveryFee, paidAmount, invoiceDate]);
 
   const selectedCustomer = customers.find(c => String(c.id) === selectedCustomerId) || null;
 
@@ -116,6 +119,7 @@ function SalesPageContent() {
     if (selectedCustomer) {
       setPersonPhone(selectedCustomer.phone || "");
       setPersonAddress(selectedCustomer.address || "");
+      setEditingContact(false);
     } else {
       setPersonPhone("");
       setPersonAddress("");
@@ -190,7 +194,7 @@ function SalesPageContent() {
     const res = await fetch("/api/sales", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "SALES", personId: selectedCustomerId, items: cart, paidAmount: paid, discount: discountVal, deliveryFee: deliveryVal, paymentMethod, personPhone, personAddress }),
+      body: JSON.stringify({ type: "SALES", personId: selectedCustomerId, items: cart, paidAmount: paid, discount: discountVal, deliveryFee: deliveryVal, paymentMethod, personPhone, personAddress, invoiceDate }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -201,6 +205,7 @@ function SalesPageContent() {
       setPaidAmount("0");
       setDiscount("0");
       setDeliveryFee("0");
+      setInvoiceDate(new Date().toISOString().split('T')[0]);
       setSelectedCustomerId("");
       fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
     } else {
@@ -282,36 +287,70 @@ function SalesPageContent() {
             {/* Customer Info Card */}
             {selectedCustomer && (
               <div style={{ marginTop: "1rem", background: "rgba(16,185,129,0.08)", border: "1px solid rgba(16,185,129,0.2)", borderRadius: "10px", padding: "14px" }}>
-                <div style={{ fontWeight: "bold", fontSize: "1.05rem", marginBottom: "12px", color: "var(--accent-color)" }}>
-                  {selectedCustomer.name}
-                </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
-                  <div className="input-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.7rem', opacity: 0.7, marginBottom: '2px' }}>📞 رقم الهاتف</label>
-                    <input 
-                      type="text" 
-                      placeholder="01xxxxxxxxx"
-                      value={personPhone} 
-                      onChange={e => setPersonPhone(e.target.value)} 
-                      className="input-field" 
-                      style={{ padding: '8px', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)' }} 
-                    />
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div style={{ fontWeight: "bold", fontSize: "1.05rem", color: "var(--accent-color)" }}>
+                    {selectedCustomer.name}
                   </div>
-                  <div className="input-group" style={{ marginBottom: 0 }}>
-                    <label style={{ fontSize: '0.7rem', opacity: 0.7, marginBottom: '2px' }}>📍 العنوان</label>
-                    <input 
-                      type="text" 
-                      placeholder="العنوان التفصيلي..."
-                      value={personAddress} 
-                      onChange={e => setPersonAddress(e.target.value)} 
-                      className="input-field" 
-                      style={{ padding: '8px', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)' }} 
-                    />
+                  <button 
+                    onClick={() => setEditingContact(!editingContact)}
+                    style={{ 
+                      background: editingContact ? 'rgba(239,68,68,0.15)' : 'rgba(255,255,255,0.08)', 
+                      border: '1px solid ' + (editingContact ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.15)'), 
+                      color: editingContact ? 'var(--danger-color)' : 'var(--text-secondary)', 
+                      borderRadius: '8px', padding: '4px 10px', cursor: 'pointer', fontSize: '0.75rem',
+                      transition: '0.2s'
+                    }}
+                  >
+                    {editingContact ? '✕ إلغاء' : '✏️ تعديل'}
+                  </button>
+                </div>
+
+                {editingContact ? (
+                  /* Editing Mode */
+                  <div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                      <div className="input-group" style={{ marginBottom: 0 }}>
+                        <label style={{ fontSize: '0.7rem', opacity: 0.7, marginBottom: '2px' }}>📞 رقم الهاتف</label>
+                        <input 
+                          type="text" 
+                          placeholder="01xxxxxxxxx"
+                          value={personPhone} 
+                          onChange={e => setPersonPhone(e.target.value)} 
+                          className="input-field" 
+                          style={{ padding: '8px', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)' }} 
+                        />
+                      </div>
+                      <div className="input-group" style={{ marginBottom: 0 }}>
+                        <label style={{ fontSize: '0.7rem', opacity: 0.7, marginBottom: '2px' }}>📍 العنوان</label>
+                        <input 
+                          type="text" 
+                          placeholder="العنوان التفصيلي..."
+                          value={personAddress} 
+                          onChange={e => setPersonAddress(e.target.value)} 
+                          className="input-field" 
+                          style={{ padding: '8px', fontSize: '0.85rem', background: 'rgba(255,255,255,0.03)' }} 
+                        />
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '0.65rem', color: 'var(--success-color)', opacity: 0.8 }}>
+                      💡 سيتم حفظ التعديلات في سجل العميل تلقائياً عند إصدار الفاتورة
+                    </div>
                   </div>
-                </div>
-                <div style={{ fontSize: '0.65rem', color: 'var(--success-color)', marginBottom: '8px', opacity: 0.8 }}>
-                  💡 سيتم حفظ البيانات في سجل العميل تلقائياً عند إصدار الفاتورة
-                </div>
+                ) : (
+                  /* Display Mode */
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                    {personPhone ? (
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>📞 {personPhone}</div>
+                    ) : (
+                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>📞 لا يوجد رقم هاتف — اضغط تعديل لإضافته</div>
+                    )}
+                    {personAddress ? (
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>📍 {personAddress}</div>
+                    ) : (
+                      <div style={{ fontSize: '0.8rem', color: 'rgba(255,255,255,0.3)', fontStyle: 'italic' }}>📍 لا يوجد عنوان — اضغط تعديل لإضافته</div>
+                    )}
+                  </div>
+                )}
                 {selectedCustomer.currentBalance !== 0 && (
                   <div style={{ fontSize: "0.85rem", marginTop: "6px", padding: "4px 8px", background: "rgba(239,68,68,0.15)", borderRadius: "6px" }}>
                     💳 مديونية حالية:{" "}
@@ -337,6 +376,17 @@ function SalesPageContent() {
           {/* Payment */}
           <div className="glass-panel">
             <h3 style={{ marginBottom: "1rem" }}>💰 الدفع</h3>
+            
+            <div className="input-group" style={{ marginBottom: '12px' }}>
+              <label>📅 تاريخ الفاتورة</label>
+              <input 
+                type="date" 
+                value={invoiceDate} 
+                onChange={e => setInvoiceDate(e.target.value)} 
+                className="input-field" 
+                style={{ padding: '8px', fontSize: '0.95rem' }}
+              />
+            </div>
             
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.95rem" }}>
               <span>إجمالي الأصناف:</span>

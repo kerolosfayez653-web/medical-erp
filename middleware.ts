@@ -20,6 +20,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith('/api/auth') ||
     pathname.endsWith('/print') ||
     pathname.startsWith('/pay/') ||
+    (pathname.startsWith('/api/invoices/') && request.method === 'GET') ||
     pathname.startsWith('/_next') ||
     pathname.startsWith('/favicon') ||
     pathname.startsWith('/logo');

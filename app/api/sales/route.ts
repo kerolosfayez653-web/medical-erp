@@ -18,7 +18,8 @@ async function generateSalesInvoiceNumber(): Promise<string> {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { personId, items, paidAmount, type, discount = 0, deliveryFee = 0, paymentMethod, personPhone, personAddress } = body;
+    const { personId, items, paidAmount, type, discount = 0, deliveryFee = 0, paymentMethod, personPhone, personAddress, invoiceDate } = body;
+    const dateToUse = invoiceDate ? new Date(invoiceDate + 'T00:00:00') : new Date();
 
     // Validate and Update person contact info if provided
     const person = await prisma.person.findUnique({ where: { id: Number(personId) } });
@@ -65,6 +66,7 @@ export async function POST(request: Request) {
           type: type || 'SALES',
           invoiceNumber,
           personId: Number(personId),
+          date: dateToUse,
           totalAmount: itemsTotal,
           netAmount: total,
           paidAmount: parseFloat(paidAmount) || 0,
@@ -107,6 +109,7 @@ export async function POST(request: Request) {
             amount: parseFloat(paidAmount),
             type: 'IN',
             method: paymentMethod || 'كاش',
+            date: dateToUse,
             notes: 'دفعة من فاتورة المبيعات'
           }
         });

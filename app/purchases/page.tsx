@@ -38,6 +38,7 @@ export default function PurchasesPage() {
   const [paidAmount, setPaidAmount]       = useState("0");
   const [discount, setDiscount]           = useState("0");
   const [deliveryFee, setDeliveryFee]     = useState("0");
+  const [invoiceDate, setInvoiceDate]     = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState("كاش");
   const [loading, setLoading]             = useState(false);
   const [searchProduct, setSearchProduct] = useState("");
@@ -62,6 +63,7 @@ export default function PurchasesPage() {
         if (data.discount) setDiscount(data.discount);
         if (data.deliveryFee) setDeliveryFee(data.deliveryFee);
         if (data.paidAmount) setPaidAmount(data.paidAmount);
+        if (data.invoiceDate) setInvoiceDate(data.invoiceDate);
       } catch (e) { console.error("Error restoring purchase draft", e); }
     }
   }, []);
@@ -69,10 +71,10 @@ export default function PurchasesPage() {
   useEffect(() => {
 
     if (cart.length > 0 || selectedSupplierId || discount !== "0" || deliveryFee !== "0" || paidAmount !== "0") {
-      const data = { cart, selectedSupplierId, suppSearch, discount, deliveryFee, paidAmount };
+      const data = { cart, selectedSupplierId, suppSearch, discount, deliveryFee, paidAmount, invoiceDate };
       localStorage.setItem("draft_purchase", JSON.stringify(data));
     }
-  }, [cart, selectedSupplierId, suppSearch, discount, deliveryFee, paidAmount]);
+  }, [cart, selectedSupplierId, suppSearch, discount, deliveryFee, paidAmount, invoiceDate]);
 
 
   const selectedSupplier = suppliers.find(s => String(s.id) === selectedSupplierId) || null;
@@ -118,7 +120,7 @@ export default function PurchasesPage() {
     const res = await fetch("/api/purchases", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ personId: selectedSupplierId, items: cart, paidAmount: paid, discount: discountVal, deliveryFee: deliveryVal, paymentMethod }),
+      body: JSON.stringify({ personId: selectedSupplierId, items: cart, paidAmount: paid, discount: discountVal, deliveryFee: deliveryVal, paymentMethod, invoiceDate }),
     });
     if (res.ok) {
       alert("✅ تم تسجيل المشتريات في المستودع بنجاح!");
@@ -128,6 +130,7 @@ export default function PurchasesPage() {
       setPaidAmount("0");
       setDiscount("0");
       setDeliveryFee("0");
+      setInvoiceDate(new Date().toISOString().split('T')[0]);
       setSelectedSupplierId("");
       fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
     } else {
@@ -253,6 +256,17 @@ export default function PurchasesPage() {
           {/* Payment */}
           <div className="glass-panel">
             <h3 style={{ marginBottom: "1rem" }}>💰 الدفع</h3>
+
+            <div className="input-group" style={{ marginBottom: '12px' }}>
+              <label>📅 تاريخ الفاتورة</label>
+              <input 
+                type="date" 
+                value={invoiceDate} 
+                onChange={e => setInvoiceDate(e.target.value)} 
+                className="input-field" 
+                style={{ padding: '8px', fontSize: '0.95rem' }}
+              />
+            </div>
 
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.95rem" }}>
               <span>إجمالي الأصناف:</span>
