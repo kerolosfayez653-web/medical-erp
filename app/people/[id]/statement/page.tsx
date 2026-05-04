@@ -20,6 +20,10 @@ interface StatementEntry {
   paidAmount?: number;
   paymentMethod?: string | null;
   items?: Array<{ id: number; name: string; quantity: number; unitType: string; product: any; price: number; total: number }>;
+  paymentId?: number;
+  paymentType?: string;
+  paymentAmount?: number;
+  paymentNotes?: string;
 }
 
 interface Monthly {
@@ -73,6 +77,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
   
   // Editing states
   const [editingInvoice, setEditingInvoice] = useState<any | null>(null);
+  const [editingPayment, setEditingPayment] = useState<any | null>(null);
   const [editReason, setEditReason] = useState("");
   const [submitting, setSubmitting] = useState(false);
 
@@ -580,6 +585,58 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
                     setEditingInvoice(null); fetchData(); setSubmitting(false);
                  }}>حفظ التعديلات</button>
                  <button className="btn" onClick={() => setEditingInvoice(null)}>إلغاء</button>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {/* Payment Editing Modal */}
+      {editingPayment && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+           <div className="glass-panel" style={{ width: '100%', maxWidth: '500px' }}>
+              <h2>تعديل سند: {editingPayment.description}</h2>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
+                 <div className="input-group">
+                   <label>المبلغ</label>
+                   <input type="number" className="input-field" value={editingPayment.paymentAmount || ''} onChange={e => setEditingPayment({...editingPayment, paymentAmount: e.target.value})} />
+                 </div>
+                 <div className="input-group">
+                   <label>طريقة الدفع</label>
+                   <select className="input-field" value={editingPayment.paymentMethod || 'كاش'} onChange={e => setEditingPayment({...editingPayment, paymentMethod: e.target.value})}>
+                     <option value="كاش">كاش</option>
+                     <option value="انستاباي">انستاباي</option>
+                     <option value="فودافون كاش">فودافون كاش</option>
+                     <option value="اكسيس باي">اكسيس باي</option>
+                     <option value="شيك">شيك</option>
+                     <option value="تحويل بنكي">تحويل بنكي</option>
+                   </select>
+                 </div>
+                 <div className="input-group">
+                   <label>التاريخ</label>
+                   <input type="date" className="input-field" value={editingPayment.date ? new Date(editingPayment.date).toISOString().split('T')[0] : ''} onChange={e => setEditingPayment({...editingPayment, date: e.target.value})} />
+                 </div>
+                 <div className="input-group">
+                   <label>ملاحظات</label>
+                   <textarea className="input-field" value={editingPayment.paymentNotes || ''} onChange={e => setEditingPayment({...editingPayment, paymentNotes: e.target.value})} />
+                 </div>
+              </div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
+                 <button className="btn btn-primary" onClick={async () => {
+                    setSubmitting(true);
+                    await fetch(`/api/payments`, { 
+                      method: 'PATCH', 
+                      headers: { 'Content-Type': 'application/json' }, 
+                      body: JSON.stringify({ 
+                        id: editingPayment.paymentId,
+                        amount: parseFloat(editingPayment.paymentAmount), 
+                        method: editingPayment.paymentMethod, 
+                        date: editingPayment.date, 
+                        notes: editingPayment.paymentNotes 
+                      }) 
+                    });
+                    setEditingPayment(null); fetchData(); setSubmitting(false);
+                 }} disabled={submitting}>{submitting ? 'جاري الحفظ...' : 'حفظ التعديلات'}</button>
+                 <button className="btn" onClick={() => setEditingPayment(null)} disabled={submitting}>إلغاء</button>
               </div>
            </div>
         </div>

@@ -156,6 +156,11 @@ export async function GET(
           entries.push({
             date: pay.date,
             type: 'PAYMENT',
+            paymentId: pay.id,
+            paymentType: pay.type,
+            paymentAmount: pay.amount,
+            paymentMethod: pay.method,
+            paymentNotes: pay.notes || '',
             description: (pay.notes || 'تحصيل من عميل') + methodStr,
             debit: 0,
             credit: pay.amount,
@@ -166,6 +171,11 @@ export async function GET(
           entries.push({
             date: pay.date,
             type: 'PAYMENT',
+            paymentId: pay.id,
+            paymentType: pay.type,
+            paymentAmount: pay.amount,
+            paymentMethod: pay.method,
+            paymentNotes: pay.notes || '',
             description: (pay.notes || 'دفعة لمورد') + methodStr,
             debit: pay.amount,
             credit: 0,
