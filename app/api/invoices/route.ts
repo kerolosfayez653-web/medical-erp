@@ -45,21 +45,17 @@ export async function GET(request: Request) {
     if (id) where.id = parseInt(id);
     if (type && type !== 'ALL') where.type = type;
     if (paymentStatus && paymentStatus !== 'ALL') {
-       if (paymentStatus === 'CREDIT') {
+       if (paymentStatus === 'CASH') {
+          // Fully paid: paidAmount >= netAmount (or paymentStatus is CASH)
+          where.paymentStatus = 'CASH';
+       } else if (paymentStatus === 'PARTIAL') {
+          // Partially paid: has some payment but not fully paid
+          // DB stores these as 'CREDIT' but paidAmount > 0
+          where.paymentStatus = 'CREDIT';
+          where.paidAmount = { gt: 0 };
+       } else if (paymentStatus === 'CREDIT') {
+          // Unpaid (آجل): no payment at all OR fully credit
           where.paymentStatus = { in: ['CREDIT', 'PARTIAL'] };
-       } else {
-          where.paymentStatus = paymentStatus;
-       }
-       
-       // Applied to Credit ONLY selection: 
-       // Hide any unpaid status if the account balance is settled (between -0.1 and 0.1 for float safety)
-       if (paymentStatus === 'CREDIT') {
-          where.NOT = {
-            AND: [
-              { paymentStatus: { in: ['CREDIT', 'PARTIAL'] } },
-              { person: { currentBalance: { lte: 0.1, gte: -0.1 } } }
-            ]
-          };
        }
     }
     if (personId && personId !== 'ALL') where.personId = parseInt(personId);

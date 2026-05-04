@@ -152,9 +152,9 @@ export default function InvoicesHistoryPage() {
                  <label>حالة الدفع</label>
                  <select className="input-field" value={paymentStatus} onChange={(e) => setPaymentStatus(e.target.value)}>
                     <option value="ALL">الكل</option>
-                    <option value="CASH">نقدي</option>
-                    <option value="CREDIT">آجل</option>
-                    <option value="PARTIAL">مدفوعة جزئياً</option>
+                    <option value="CASH">✅ خالص بالكامل</option>
+                    <option value="CREDIT">❌ آجل (غير مسدد)</option>
+                    <option value="PARTIAL">🔸 مدفوعة جزئياً</option>
                  </select>
               </div>
               <div className="input-group">
