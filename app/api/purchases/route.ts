@@ -66,9 +66,11 @@ export async function POST(request: Request) {
 
       // 2. Update Supplier Balance
       if (personId) {
+        const person = await tx.person.findUnique({ where: { id: parseInt(personId) } });
+        const balanceChange = person?.type === 'SUPPLIER' ? remaining : -remaining;
         await tx.person.update({
           where: { id: parseInt(personId) },
-          data: { currentBalance: { increment: remaining } }
+          data: { currentBalance: { increment: balanceChange } }
         });
       }
 

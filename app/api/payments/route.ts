@@ -40,7 +40,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { personId, amount, method, invoiceId, date, notes } = body;
+    const { personId, amount, method, invoiceId, date, notes, type: providedType } = body;
 
     if (!personId || !amount) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
@@ -51,7 +51,8 @@ export async function POST(request: Request) {
       
       const person = await tx.person.findUnique({ where: { id: Number(personId) } });
       if (!person) throw new Error('Person not found');
-      const type = person.type === 'CUSTOMER' ? 'IN' : 'OUT';
+      
+      const type = providedType || (person.type === 'CUSTOMER' ? 'IN' : 'OUT');
 
       const payment = await tx.payment.create({
         data: {
@@ -65,10 +66,17 @@ export async function POST(request: Request) {
         }
       });
 
-      // Update Person Balance (Payments reduce debt/credit for both Customers and Suppliers)
+      // Update Person Balance dynamically based on person.type and payment type
+      let balanceChange = 0;
+      if (person.type === 'CUSTOMER') {
+         balanceChange = (type === 'IN') ? -parseFloat(amount) : parseFloat(amount);
+      } else {
+         balanceChange = (type === 'OUT') ? -parseFloat(amount) : parseFloat(amount);
+      }
+
       await tx.person.update({
         where: { id: person.id },
-        data: { currentBalance: { decrement: parseFloat(amount) } }
+        data: { currentBalance: { increment: balanceChange } }
       });
 
       if (invoiceId) {
@@ -114,9 +122,16 @@ export async function PATCH(request: Request) {
       });
 
       // Adjust Person Balance by the difference
+      const person = await tx.person.findUnique({ where: { id: old.personId } });
+      let balanceChange = 0;
+      if (person?.type === 'CUSTOMER') {
+         balanceChange = (old.type === 'IN') ? -diff : diff;
+      } else {
+         balanceChange = (old.type === 'OUT') ? -diff : diff;
+      }
       await tx.person.update({
         where: { id: old.personId },
-        data: { currentBalance: { decrement: diff } }
+        data: { currentBalance: { increment: balanceChange } }
       });
 
       // Adjust Invoice if linked
@@ -155,9 +170,16 @@ export async function DELETE(request: Request) {
       if (!payment) throw new Error('Payment not found');
 
       // Reverse Balance Influence
+      const person = await tx.person.findUnique({ where: { id: payment.personId } });
+      let reverseChange = 0;
+      if (person?.type === 'CUSTOMER') {
+         reverseChange = (payment.type === 'IN') ? payment.amount : -payment.amount;
+      } else {
+         reverseChange = (payment.type === 'OUT') ? payment.amount : -payment.amount;
+      }
       await tx.person.update({
         where: { id: payment.personId },
-        data: { currentBalance: { increment: payment.amount } }
+        data: { currentBalance: { increment: reverseChange } }
       });
 
       // Reverse Invoice Influence

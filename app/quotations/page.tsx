@@ -41,7 +41,7 @@ export default function NewQuotationPage() {
   useEffect(() => {
     fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
     fetch("/api/people").then(r => r.json()).then(d => {
-      if (d.success) setCustomers(d.data.filter((p: any) => p.type === "CUSTOMER"));
+      if (d.success) setCustomers(d.data);
     });
 
     const draft = localStorage.getItem("draft_quotation");

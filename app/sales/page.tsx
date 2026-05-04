@@ -59,7 +59,7 @@ function SalesPageContent() {
   useEffect(() => {
     fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
     fetch("/api/people").then(r => r.json()).then(d => {
-      if (d.success) setCustomers(d.data.filter((p: any) => p.type === "CUSTOMER"));
+      if (d.success) setCustomers(d.data);
     });
 
     if (fromQuotation) {

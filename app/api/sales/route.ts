@@ -95,9 +95,11 @@ export async function POST(request: Request) {
       });
 
       // 2. Update Person Balance (الديون)
+      const person = await tx.person.findUnique({ where: { id: Number(personId) } });
+      const balanceChange = person?.type === 'CUSTOMER' ? remaining : -remaining;
       await tx.person.update({
         where: { id: Number(personId) },
-        data: { currentBalance: { increment: remaining } }
+        data: { currentBalance: { increment: balanceChange } }
       });
 
       // 3. Add Payment Record (سند القبض)

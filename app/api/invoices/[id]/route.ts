@@ -96,9 +96,17 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
       // 4.1 Update Balance
       const targetPersonId = personId ? parseInt(personId) : oldInvoice.personId;
       if (targetPersonId && newRemaining !== 0) {
+        const targetPerson = await tx.person.findUnique({ where: { id: targetPersonId } });
+        const currentActiveType = type || oldInvoice.type;
+        let newChange = 0;
+        if (targetPerson?.type === 'CUSTOMER') {
+           newChange = (currentActiveType === 'SALES' || currentActiveType === 'SALES_RETURN') ? newRemaining : -newRemaining;
+        } else {
+           newChange = (currentActiveType === 'PURCHASES' || currentActiveType === 'PURCHASES_RETURN') ? newRemaining : -newRemaining;
+        }
         await tx.person.update({
           where: { id: targetPersonId },
-          data: { currentBalance: { increment: newRemaining } }
+          data: { currentBalance: { increment: newChange } }
         });
       }
 
@@ -211,9 +219,15 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       if (invoice.personId) {
         const remaining = invoice.totalAmount - invoice.paidAmount;
         if (remaining !== 0) {
+          let reverseChange = 0;
+          if (invoice.person?.type === 'CUSTOMER') {
+             reverseChange = (invoice.type === 'SALES' || invoice.type === 'SALES_RETURN') ? -remaining : remaining;
+          } else {
+             reverseChange = (invoice.type === 'PURCHASES' || invoice.type === 'PURCHASES_RETURN') ? -remaining : remaining;
+          }
           await tx.person.update({
             where: { id: invoice.personId },
-            data: { currentBalance: { decrement: remaining } }
+            data: { currentBalance: { increment: reverseChange } }
           });
         }
       }

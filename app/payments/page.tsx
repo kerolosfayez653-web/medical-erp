@@ -35,7 +35,8 @@ export default function PaymentsPage() {
     method: "كاش",
     notes: "",
     date: new Date().toISOString().split('T')[0],
-    invoiceId: ""
+    invoiceId: "",
+    type: "IN"
   });
   const [personInvoices, setPersonInvoices] = useState<any[]>([]);
   const [isFetchingPersonInvoices, setIsFetchingPersonInvoices] = useState(false);
@@ -542,6 +543,18 @@ export default function PaymentsPage() {
                   {persons.sort((a,b) => a.name.localeCompare(b.name)).map(p => (
                     <option key={p.id} value={p.id}>{p.name} ({p.type === 'CUSTOMER' ? 'عميل' : 'مورد'})</option>
                   ))}
+                </select>
+              </div>
+              <div>
+                <label style={labelStyle}>نوع السند</label>
+                <select 
+                  className="input-field" 
+                  value={newVoucher.type}
+                  onChange={e => setNewVoucher({...newVoucher, type: e.target.value})}
+                  required
+                >
+                  <option value="IN">قبض (تحصيل أموال)</option>
+                  <option value="OUT">صرف (دفع أموال)</option>
                 </select>
               </div>
               <div>

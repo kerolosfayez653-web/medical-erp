@@ -48,7 +48,7 @@ export default function PurchasesPage() {
   useEffect(() => {
     fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
     fetch("/api/people").then(r => r.json()).then(d => {
-      if (d.success) setSuppliers(d.data.filter((p: any) => p.type === "SUPPLIER"));
+      if (d.success) setSuppliers(d.data);
     });
 
     const draft = localStorage.getItem("draft_purchase");
