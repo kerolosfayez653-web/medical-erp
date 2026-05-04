@@ -293,9 +293,9 @@ export default function NewQuotationPage() {
                       <td style={{ padding: '8px', textAlign: 'right' }}>{item.name}</td>
                       <td style={{ padding: '8px' }}>
                         <input 
-                          type="number" 
+                          type="number" step="any"
                           value={item.quantity} 
-                          onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseInt(e.target.value) || 1 } : i))}
+                          onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseFloat(e.target.value) || 0 } : i))}
                           className="input-field" 
                           style={{ width: '60px', textAlign: 'center' }}
                         />

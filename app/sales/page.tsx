@@ -463,7 +463,7 @@ function SalesPageContent() {
                         <td style={{ padding: "12px", fontWeight: "bold", textAlign: "right" }}>{item.name}</td>
                         <td style={{ padding: "12px" }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center' }}>
-                            <input type="number" value={item.quantity} onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseInt(e.target.value) || 1 } : i))} className="input-field" style={{ width: "60px", textAlign: "center", padding: "4px" }} />
+                            <input type="number" step="any" value={item.quantity} onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseFloat(e.target.value) || 0 } : i))} className="input-field" style={{ width: "60px", textAlign: "center", padding: "4px" }} />
                             <select 
                               value={item.unitType}
                               onChange={e => {

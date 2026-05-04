@@ -34,7 +34,7 @@ export async function POST(request: Request) {
       });
 
       // Insert Inventory Lot
-      const qty = parseInt(item.الكمية || item.quantity || item.الرصيد) || 0;
+      const qty = parseFloat(item.الكمية || item.quantity || item.الرصيد) || 0;
       if (qty > 0) {
          let expDate = new Date();
          expDate.setFullYear(expDate.getFullYear() + 1); // Default to +1 year if not provided

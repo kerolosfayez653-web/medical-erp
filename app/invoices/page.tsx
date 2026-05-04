@@ -419,7 +419,7 @@ export default function InvoicesHistoryPage() {
                                    <td style={{ padding: '8px' }}>{item.product?.name || "صنف غير معرف"}</td>
                                    <td style={{ padding: '8px' }}>
                                       <input 
-                                         type="number" 
+                                         type="number" step="any"
                                          className="input-field" 
                                          style={{ width: '80px', padding: '4px 8px' }} 
                                          value={item.quantity} 

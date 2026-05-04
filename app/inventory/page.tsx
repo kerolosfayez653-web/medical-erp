@@ -34,7 +34,7 @@ interface Totals {
 }
 
 const fmt = (n: number) => n.toLocaleString('ar-EG', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const fmt0 = (n: number) => n.toLocaleString('ar-EG', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+const fmt0 = (n: number) => n.toLocaleString('ar-EG', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
 
 export default function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);

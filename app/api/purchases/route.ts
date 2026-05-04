@@ -48,9 +48,9 @@ export async function POST(request: Request) {
             create: await Promise.all(items.map(async (i: any) => {
               const product = await tx.product.findUnique({ where: { id: parseInt(i.productId) } });
               const factor = product?.conversionFactor || 1;
-              const effectiveQty = i.unitType === 'SECONDARY' ? parseInt(i.quantity) : (parseInt(i.quantity) * factor);
+              const effectiveQty = i.unitType === 'SECONDARY' ? parseFloat(i.quantity) : (parseFloat(i.quantity) * factor);
               const price = parseFloat(i.price);
-              const qty = parseInt(i.quantity);
+              const qty = parseFloat(i.quantity);
               return {
                 productId: parseInt(i.productId),
                 quantity: effectiveQty,
@@ -91,7 +91,7 @@ export async function POST(request: Request) {
       for (const item of items) {
         const product = await tx.product.findUnique({ where: { id: parseInt(item.productId) } });
         const factor = product?.conversionFactor || 1;
-        const effectiveQty = item.unitType === 'SECONDARY' ? parseInt(item.quantity) : (parseInt(item.quantity) * factor);
+        const effectiveQty = item.unitType === 'SECONDARY' ? parseFloat(item.quantity) : (parseFloat(item.quantity) * factor);
 
         if (effectiveQty > 0) {
           await tx.inventoryLot.create({

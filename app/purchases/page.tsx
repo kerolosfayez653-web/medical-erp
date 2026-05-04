@@ -354,8 +354,8 @@ export default function PurchasesPage() {
                       <td style={{ padding: "12px", fontWeight: "bold", textAlign: "right" }}>{item.name}</td>
                       <td style={{ padding: "12px" }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          <input type="number" min="1" value={item.quantity}
-                            onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseInt(e.target.value) || 1 } : i))}
+                          <input type="number" step="any" min="0" value={item.quantity}
+                            onChange={e => setCart(cart.map(i => i.productId === item.productId ? { ...i, quantity: parseFloat(e.target.value) || 0 } : i))}
                             className="input-field" style={{ width: "65px", padding: "4px", textAlign: "center" }} />
                           <select 
                             value={item.unitType}
