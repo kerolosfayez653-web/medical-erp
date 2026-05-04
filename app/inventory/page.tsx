@@ -46,8 +46,14 @@ export default function InventoryPage() {
   const [activeTab, setActiveTab]         = useState<'table' | 'analysis'>('table');
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [newProduct, setNewProduct] = useState({
+    name: '', barcode: '', category: '', unit: 'قطعه', secondaryUnit: '', conversionFactor: '1', secondaryPrice: '', openingQty: '0', openingWeightedAvg: '0'
+  });
+  const [addError, setAddError] = useState('');
 
-  useEffect(() => {
+  const fetchProducts = () => {
+    setLoading(true);
     fetch('/api/inventory')
       .then(r => r.json())
       .then(json => {
@@ -57,6 +63,10 @@ export default function InventoryPage() {
         }
       })
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    fetchProducts();
   }, []);
 
   const categories = Array.from(new Set(products.map(p => p.category).filter(Boolean))) as string[];
@@ -88,9 +98,14 @@ export default function InventoryPage() {
             نظام المتوسط المرجح المتحرك • بيانات 1/1/2026
           </p>
         </div>
-        <a href="/import" className="btn btn-primary" style={{ textDecoration: 'none', padding: '10px 20px' }}>
-          📥 استيراد / تحديث البيانات
-        </a>
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button onClick={() => { setShowAddProduct(true); setAddError(''); }} className="btn btn-primary" style={{ padding: '10px 20px' }}>
+            ➕ إضافة صنف جديد
+          </button>
+          <a href="/import" className="btn" style={{ textDecoration: 'none', padding: '10px 20px', background: 'rgba(255,255,255,0.08)' }}>
+            📥 استيراد / تحديث البيانات
+          </a>
+        </div>
       </div>
 
       {/* KPI Cards */}
@@ -496,6 +511,153 @@ export default function InventoryPage() {
                 className="btn btn-primary"
               >
                 {submitting ? 'جاري الحفظ...' : 'حفظ الوحدات'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Product Modal */}
+      {showAddProduct && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+          <div className="glass-panel" style={{ width: '100%', maxWidth: '650px', maxHeight: '95vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0 }}>➕ إضافة صنف جديد</h2>
+              <button onClick={() => setShowAddProduct(false)} style={{ background: 'none', border: 'none', color: '#fff', fontSize: '1.5rem', cursor: 'pointer' }}>×</button>
+            </div>
+
+            {addError && (
+              <div style={{ padding: '12px', background: 'rgba(239,68,68,0.15)', borderRadius: '8px', color: '#ef4444', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                ❌ {addError}
+              </div>
+            )}
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+              <div className="input-group" style={{ gridColumn: 'span 2' }}>
+                <label>اسم الصنف *</label>
+                <input
+                  className="input-field"
+                  placeholder="مثال: جوانتي نيتريل ازرق"
+                  value={newProduct.name}
+                  onChange={e => setNewProduct({ ...newProduct, name: e.target.value })}
+                />
+              </div>
+              <div className="input-group">
+                <label>الكود / الباركود</label>
+                <input
+                  className="input-field"
+                  placeholder="مثال: SKU-001"
+                  value={newProduct.barcode}
+                  onChange={e => setNewProduct({ ...newProduct, barcode: e.target.value })}
+                />
+              </div>
+              <div className="input-group">
+                <label>التصنيف</label>
+                <input
+                  className="input-field"
+                  placeholder="مثال: مستلزمات طبية"
+                  value={newProduct.category}
+                  list="categories-list"
+                  onChange={e => setNewProduct({ ...newProduct, category: e.target.value })}
+                />
+                <datalist id="categories-list">
+                  {categories.map(c => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+              <div className="input-group">
+                <label>الوحدة الكبرى (مثلاً: علبة)</label>
+                <input
+                  className="input-field"
+                  placeholder="علبة"
+                  value={newProduct.unit}
+                  onChange={e => setNewProduct({ ...newProduct, unit: e.target.value })}
+                />
+              </div>
+              <div className="input-group">
+                <label>الوحدة الصغرى (مثلاً: شريط)</label>
+                <input
+                  className="input-field"
+                  placeholder="شريط"
+                  value={newProduct.secondaryUnit}
+                  onChange={e => setNewProduct({ ...newProduct, secondaryUnit: e.target.value })}
+                />
+              </div>
+              <div className="input-group">
+                <label>معامل التحويل (كم صغرى في الكبرى)</label>
+                <input
+                  type="number"
+                  className="input-field"
+                  value={newProduct.conversionFactor}
+                  onChange={e => setNewProduct({ ...newProduct, conversionFactor: e.target.value })}
+                />
+              </div>
+              <div className="input-group">
+                <label>سعر بيع الوحدة الصغرى (ج.م)</label>
+                <input
+                  type="number"
+                  className="input-field"
+                  placeholder="0.00"
+                  value={newProduct.secondaryPrice}
+                  onChange={e => setNewProduct({ ...newProduct, secondaryPrice: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+              <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '0.75rem', color: 'var(--accent-color)' }}>📦 رصيد أول المدة (اختياري)</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                <div className="input-group">
+                  <label>الكمية الافتتاحية</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    value={newProduct.openingQty}
+                    onChange={e => setNewProduct({ ...newProduct, openingQty: e.target.value })}
+                  />
+                </div>
+                <div className="input-group">
+                  <label>متوسط التكلفة المرجح</label>
+                  <input
+                    type="number"
+                    className="input-field"
+                    placeholder="0.00"
+                    value={newProduct.openingWeightedAvg}
+                    onChange={e => setNewProduct({ ...newProduct, openingWeightedAvg: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+              <button onClick={() => setShowAddProduct(false)} className="btn" style={{ background: 'rgba(255,255,255,0.1)' }}>إلغاء</button>
+              <button
+                disabled={submitting || !newProduct.name.trim()}
+                onClick={async () => {
+                  setSubmitting(true);
+                  setAddError('');
+                  try {
+                    const res = await fetch('/api/products', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify(newProduct)
+                    });
+                    const data = await res.json();
+                    if (data.success) {
+                      setShowAddProduct(false);
+                      setNewProduct({ name: '', barcode: '', category: '', unit: 'قطعه', secondaryUnit: '', conversionFactor: '1', secondaryPrice: '', openingQty: '0', openingWeightedAvg: '0' });
+                      fetchProducts();
+                    } else {
+                      setAddError(data.error || 'حدث خطأ أثناء الإضافة');
+                    }
+                  } catch (e) {
+                    setAddError('خطأ في الاتصال بالسيرفر');
+                  }
+                  setSubmitting(false);
+                }}
+                className="btn btn-primary"
+                style={{ padding: '12px 32px' }}
+              >
+                {submitting ? 'جاري الإضافة...' : '✅ إضافة الصنف'}
               </button>
             </div>
           </div>
