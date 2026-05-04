@@ -25,6 +25,7 @@ export default function PaymentsPage() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<"ALL" | "IN" | "OUT">("ALL");
   const [activeTab, setActiveTab] = useState<"HISTORY" | "BALANCES">("HISTORY");
+  const [balanceFilter, setBalanceFilter] = useState<"ALL" | "OWES_US" | "WE_OWE" | "SETTLED">("ALL");
   
   // New Voucher State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -237,8 +238,21 @@ export default function PaymentsPage() {
   const filteredBalances = persons.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(search.toLowerCase());
     const matchesType = filterType === 'ALL' || (filterType === 'IN' ? p.type === 'CUSTOMER' : p.type === 'SUPPLIER');
-    return matchesSearch && matchesType;
+    const matchesBalance = 
+      balanceFilter === 'ALL' ? true :
+      balanceFilter === 'OWES_US' ? p.currentBalance > 0.1 :
+      balanceFilter === 'WE_OWE' ? p.currentBalance < -0.1 :
+      /* SETTLED */ Math.abs(p.currentBalance) <= 0.1;
+    return matchesSearch && matchesType && matchesBalance;
   });
+
+  const balanceStats = {
+    totalOwesUs: persons.filter(p => p.currentBalance > 0.1).reduce((s: number, p: any) => s + p.currentBalance, 0),
+    countOwesUs: persons.filter(p => p.currentBalance > 0.1).length,
+    totalWeOwe: persons.filter(p => p.currentBalance < -0.1).reduce((s: number, p: any) => s + Math.abs(p.currentBalance), 0),
+    countWeOwe: persons.filter(p => p.currentBalance < -0.1).length,
+    countSettled: persons.filter(p => Math.abs(p.currentBalance) <= 0.1).length,
+  };
 
   const stats = {
     collections: payments.filter(p => p.type === 'IN').reduce((s, p) => s + p.amount, 0),
@@ -409,6 +423,54 @@ export default function PaymentsPage() {
           {filtered.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.5 }}>لا توجد تحصيلات مطابقة للبحث.</div>}
         </div>
       ) : (
+        <>
+        {/* Balance Filters */}
+        <div className="glass-panel" style={{ marginBottom: '1rem', padding: '1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              <button 
+                onClick={() => setBalanceFilter('ALL')} 
+                className={`btn ${balanceFilter === 'ALL' ? 'btn-primary' : ''}`}
+                style={{ padding: '8px 16px', fontSize: '0.85rem', borderRadius: '8px' }}
+              >
+                📋 الكل ({persons.length})
+              </button>
+              <button 
+                onClick={() => setBalanceFilter('OWES_US')} 
+                className={`btn ${balanceFilter === 'OWES_US' ? 'btn-primary' : ''}`}
+                style={{ padding: '8px 16px', fontSize: '0.85rem', borderRadius: '8px', ...(balanceFilter !== 'OWES_US' ? { background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444' } : {}) }}
+              >
+                🔴 عليهم ديون ({balanceStats.countOwesUs})
+              </button>
+              <button 
+                onClick={() => setBalanceFilter('WE_OWE')} 
+                className={`btn ${balanceFilter === 'WE_OWE' ? 'btn-primary' : ''}`}
+                style={{ padding: '8px 16px', fontSize: '0.85rem', borderRadius: '8px', ...(balanceFilter !== 'WE_OWE' ? { background: 'rgba(245, 158, 11, 0.1)', color: '#f59e0b' } : {}) }}
+              >
+                🟡 ليهم ديون ({balanceStats.countWeOwe})
+              </button>
+              <button 
+                onClick={() => setBalanceFilter('SETTLED')} 
+                className={`btn ${balanceFilter === 'SETTLED' ? 'btn-primary' : ''}`}
+                style={{ padding: '8px 16px', fontSize: '0.85rem', borderRadius: '8px', ...(balanceFilter !== 'SETTLED' ? { background: 'rgba(16, 185, 129, 0.1)', color: '#10b981' } : {}) }}
+              >
+                ✅ مسدد ({balanceStats.countSettled})
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '1.5rem', fontSize: '0.85rem' }}>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ opacity: 0.6, fontSize: '0.7rem', marginBottom: '2px' }}>إجمالي عليهم</div>
+                <div style={{ fontWeight: 'bold', color: 'var(--danger-color)' }}>{fmt(balanceStats.totalOwesUs)} ج.م</div>
+              </div>
+              <div style={{ width: '1px', background: 'rgba(255,255,255,0.1)' }}></div>
+              <div style={{ textAlign: 'center' }}>
+                <div style={{ opacity: 0.6, fontSize: '0.7rem', marginBottom: '2px' }}>إجمالي ليهم</div>
+                <div style={{ fontWeight: 'bold', color: '#f59e0b' }}>{fmt(balanceStats.totalWeOwe)} ج.م</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="glass-panel" style={{ padding: 0, overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
             <thead style={{ background: 'rgba(255,255,255,0.02)' }}>
@@ -456,6 +518,7 @@ export default function PaymentsPage() {
           </table>
           {filteredBalances.length === 0 && <div style={{ textAlign: 'center', padding: '3rem', opacity: 0.5 }}>لا توجد سجلات مطابقة للبحث.</div>}
         </div>
+        </>
       )}
 
       {/* Add Modal */}
