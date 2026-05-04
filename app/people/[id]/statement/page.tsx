@@ -59,7 +59,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
   const [statement, setStatement] = useState<StatementEntry[]>([]);
   const [monthly, setMonthly] = useState<Monthly[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"statement" | "monthly">("statement");
+  const [activeTab, setActiveTab] = useState<"statement" | "monthly" | "products">("statement");
   const [filterMonth, setFilterMonth] = useState("ALL");
   const [expandedInvoice, setExpandedInvoice] = useState<number | null>(null);
   
@@ -197,7 +197,7 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
 
       {/* Tabs */}
       <div className="no-print" style={{ display: "flex", gap: "1rem", marginBottom: "1.5rem", borderBottom: "1px solid var(--border-color)" }}>
-        {([["statement", "📄 كشف الحساب التفصيلي"], ["monthly", "📊 ملخص شهري"]] as const).map(([tab, label]) => (
+        {([["statement", "📄 كشف الحساب التفصيلي"], ["products", "📦 كشف الأصناف"], ["monthly", "📊 ملخص شهري"]] as const).map(([tab, label]) => (
           <button key={tab} onClick={() => setActiveTab(tab)}
             style={{
               background: "none", border: "none", padding: "10px 20px", cursor: "pointer",
@@ -384,6 +384,88 @@ export default function StatementPage({ params }: { params: Promise<{ id: string
           </table>
         </div>
       )}
+
+      {/* ── Products Tab ── */}
+      {activeTab === "products" && (() => {
+        // Aggregate products from invoice statement entries
+        const productMap: Record<string, { name: string; productId: number; totalQty: number; totalAmount: number; invoiceCount: number; unit: string; secondaryUnit: string; conversionFactor: number }> = {};
+        for (const entry of statement) {
+          if (entry.type !== "INVOICE" || !entry.items) continue;
+          for (const item of entry.items) {
+            const key = item.product?.id || item.name;
+            if (!productMap[key]) {
+              productMap[key] = {
+                name: item.name || item.product?.name || 'غير معرف',
+                productId: item.product?.id || 0,
+                totalQty: 0,
+                totalAmount: 0,
+                invoiceCount: 0,
+                unit: item.product?.unit || 'وحدة',
+                secondaryUnit: item.product?.secondaryUnit || 'وحدة',
+                conversionFactor: item.product?.conversionFactor || 1,
+              };
+            }
+            productMap[key].totalQty += item.quantity;
+            productMap[key].totalAmount += item.total;
+            productMap[key].invoiceCount++;
+          }
+        }
+        const productList = Object.values(productMap).sort((a, b) => b.totalAmount - a.totalAmount);
+        const grandTotal = productList.reduce((s, p) => s + p.totalAmount, 0);
+
+        return (
+          <div className="glass-panel" style={{ overflowX: "auto" }}>
+            <h3 style={{ marginBottom: "1.5rem" }}>📦 ملخص الأصناف ({productList.length} صنف)</h3>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "0.85rem" }}>
+              <thead>
+                <tr style={{ background: "rgba(59,130,246,0.15)", textAlign: "center" }}>
+                  <th style={{ ...th, textAlign: "right" }}>الصنف</th>
+                  <th style={th}>عدد الفواتير</th>
+                  <th style={th}>إجمالي الكمية</th>
+                  <th style={th}>إجمالي المبلغ</th>
+                  <th style={th}>متوسط السعر</th>
+                  <th style={th}>النسبة</th>
+                </tr>
+              </thead>
+              <tbody>
+                {productList.map((p, i) => (
+                  <tr key={i} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", textAlign: "center" }}>
+                    <td style={{ ...td, textAlign: "right", fontWeight: "bold" }}>
+                      {p.productId ? (
+                        <a href={`/products/${p.productId}/statement`} style={{ color: "inherit", textDecoration: "underline" }}>{p.name}</a>
+                      ) : p.name}
+                    </td>
+                    <td style={td}>{p.invoiceCount}</td>
+                    <td style={td}>
+                      {p.conversionFactor > 1 
+                        ? `${Math.floor(p.totalQty / p.conversionFactor)} ${p.unit} (${p.totalQty % p.conversionFactor} ${p.secondaryUnit})`
+                        : `${p.totalQty} ${p.secondaryUnit}`
+                      }
+                    </td>
+                    <td style={{ ...td, fontWeight: "bold" }}>{fmt(p.totalAmount)} ج.م</td>
+                    <td style={td}>{p.totalQty > 0 ? fmt(p.totalAmount / p.totalQty) : "-"}</td>
+                    <td style={{ ...td, color: "var(--accent-color)" }}>
+                      {grandTotal > 0 ? ((p.totalAmount / grandTotal) * 100).toFixed(1) + "%" : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr style={{ background: "rgba(59,130,246,0.2)", fontWeight: "bold", textAlign: "center" }}>
+                  <td style={{ ...td, textAlign: "right" }}>الإجمالي ({productList.length} صنف)</td>
+                  <td style={td}>-</td>
+                  <td style={td}>-</td>
+                  <td style={{ ...td, fontWeight: "bold" }}>{fmt(grandTotal)} ج.م</td>
+                  <td style={td}>-</td>
+                  <td style={td}>100%</td>
+                </tr>
+              </tfoot>
+            </table>
+            {productList.length === 0 && <div style={{ textAlign: "center", padding: "3rem", opacity: 0.5 }}>لا توجد أصناف في الفواتير</div>}
+          </div>
+        );
+      })()}
+
 
       {/* Payment Modal */}
       {showPaymentModal && (

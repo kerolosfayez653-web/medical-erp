@@ -218,7 +218,11 @@ export default function InventoryPage() {
                     return (
                       <tr key={p.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.04)', textAlign: 'center' }}>
                         <td style={td}><span style={{ color: 'var(--accent-color)', fontSize: '0.8rem' }}>{p.barcode}</span></td>
-                        <td style={{ ...td, textAlign: 'right', fontWeight: 'bold', whiteSpace: 'normal' }}>{p.name}</td>
+                        <td style={{ ...td, textAlign: 'right', fontWeight: 'bold', whiteSpace: 'normal' }}>
+                          <a href={`/products/${p.id}/statement`} style={{ color: 'inherit', textDecoration: 'underline', cursor: 'pointer' }}>
+                            {p.name}
+                          </a>
+                        </td>
                         <td style={td}>{p.openingQty > 0 ? fmt0(p.openingQty) : <span style={{ color: 'var(--text-secondary)' }}>-</span>}</td>
                         <td style={td}>{p.openingWeightedAvg > 0 ? p.openingWeightedAvg.toFixed(3) : <span style={{ color: 'var(--text-secondary)' }}>-</span>}</td>
                         <td style={{ ...td, color: 'var(--success-color)' }}>{p.purchasedQty > 0 ? `+${fmt0(p.purchasedQty)}` : '-'}</td>
