@@ -48,7 +48,7 @@ export default function InventoryPage() {
   const [submitting, setSubmitting] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [newProduct, setNewProduct] = useState({
-    name: '', barcode: '', category: '', unit: 'قطعه', secondaryUnit: '', conversionFactor: '1', secondaryPrice: '', openingQty: '0', openingWeightedAvg: '0'
+    name: '', barcode: '', category: '', openingQty: '0', openingWeightedAvg: '0'
   });
   const [addError, setAddError] = useState('');
 
@@ -564,52 +564,17 @@ export default function InventoryPage() {
                   {categories.map(c => <option key={c} value={c} />)}
                 </datalist>
               </div>
-              <div className="input-group">
-                <label>الوحدة الكبرى (مثلاً: علبة)</label>
-                <input
-                  className="input-field"
-                  placeholder="علبة"
-                  value={newProduct.unit}
-                  onChange={e => setNewProduct({ ...newProduct, unit: e.target.value })}
-                />
-              </div>
-              <div className="input-group">
-                <label>الوحدة الصغرى (مثلاً: شريط)</label>
-                <input
-                  className="input-field"
-                  placeholder="شريط"
-                  value={newProduct.secondaryUnit}
-                  onChange={e => setNewProduct({ ...newProduct, secondaryUnit: e.target.value })}
-                />
-              </div>
-              <div className="input-group">
-                <label>معامل التحويل (كم صغرى في الكبرى)</label>
-                <input
-                  type="number"
-                  className="input-field"
-                  value={newProduct.conversionFactor}
-                  onChange={e => setNewProduct({ ...newProduct, conversionFactor: e.target.value })}
-                />
-              </div>
-              <div className="input-group">
-                <label>سعر بيع الوحدة الصغرى (ج.م)</label>
-                <input
-                  type="number"
-                  className="input-field"
-                  placeholder="0.00"
-                  value={newProduct.secondaryPrice}
-                  onChange={e => setNewProduct({ ...newProduct, secondaryPrice: e.target.value })}
-                />
-              </div>
             </div>
 
             <div style={{ marginTop: '1.5rem', padding: '1rem', background: 'rgba(255,255,255,0.03)', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
               <div style={{ fontSize: '0.85rem', fontWeight: 'bold', marginBottom: '0.75rem', color: 'var(--accent-color)' }}>📦 رصيد أول المدة (اختياري)</div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>💡 الكمية بتقبل كسور (مثلاً: 2.5)</div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div className="input-group">
                   <label>الكمية الافتتاحية</label>
                   <input
                     type="number"
+                    step="any"
                     className="input-field"
                     value={newProduct.openingQty}
                     onChange={e => setNewProduct({ ...newProduct, openingQty: e.target.value })}
@@ -644,7 +609,7 @@ export default function InventoryPage() {
                     const data = await res.json();
                     if (data.success) {
                       setShowAddProduct(false);
-                      setNewProduct({ name: '', barcode: '', category: '', unit: 'قطعه', secondaryUnit: '', conversionFactor: '1', secondaryPrice: '', openingQty: '0', openingWeightedAvg: '0' });
+                      setNewProduct({ name: '', barcode: '', category: '', openingQty: '0', openingWeightedAvg: '0' });
                       fetchProducts();
                     } else {
                       setAddError(data.error || 'حدث خطأ أثناء الإضافة');
