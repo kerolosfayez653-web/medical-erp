@@ -138,9 +138,11 @@ export default function ReportsPage() {
     exportToExcel(rows, 'قائمة الدخل', `قائمة_الدخل_${periodLabel}.xlsx`);
   };
 
+  const startLabel = month === "ALL" ? `١/١/${year}` : `١/${month}/${year}`;
+
   const exportCashFlow = () => {
     const rows = [
-      { 'البند': `رصيد نقدية أول المدة (١/١/${year})`, 'المبلغ (ج.م)': totals?.openingCashBalance || 0 },
+      { 'البند': `رصيد نقدية أول المدة (${startLabel})`, 'المبلغ (ج.م)': totals?.openingCashBalance || 0 },
       { 'البند': '(+) إجمالي المقبوضات (تحصيل عملاء)', 'المبلغ (ج.م)': totals?.totalPaymentsIn || 0 },
       { 'البند': '(-) إجمالي المدفوعات (موردين ومصاريف)', 'المبلغ (ج.م)': (totals?.totalPaymentsOut || 0) + (totals?.totalExpenses || 0) },
       { 'البند': 'رصيد النقدية النهائي', 'المبلغ (ج.م)': (totals?.openingCashBalance || 0) + (totals?.totalPaymentsIn || 0) - (totals?.totalPaymentsOut || 0) - (totals?.totalExpenses || 0) },
@@ -150,7 +152,7 @@ export default function ReportsPage() {
 
   const exportInventorySummary = () => {
     const rows = [
-      { 'البند': `رصيد أول المدة (١/١/${year})`, 'المبلغ (ج.م)': totals?.totalOpeningValue || 0 },
+      { 'البند': `رصيد أول المدة (${startLabel})`, 'المبلغ (ج.م)': totals?.totalOpeningValue || 0 },
       { 'البند': 'إجمالي المشتريات (الإضافة)', 'المبلغ (ج.م)': totals?.totalPurchases || 0 },
       { 'البند': 'تكلفة البضاعة الخارجة (مباعة)', 'المبلغ (ج.م)': totals?.totalCOGS || 0 },
       { 'البند': 'قيمة المخزون بنهاية الفترة', 'المبلغ (ج.م)': (totals?.totalOpeningValue || 0) + (totals?.totalPurchases || 0) - (totals?.totalCOGS || 0) },
@@ -197,10 +199,10 @@ export default function ReportsPage() {
     } else if (modalType === 'cash') {
       rows = modalData.map((pay: any) => ({
         'التاريخ': new Date(pay.date).toLocaleDateString('ar-EG'),
-        'الشخص': pay.person?.name || '',
+        'الشخص / الجهة': pay.isExpense ? `مصروف: ${pay.category}` : (pay.person?.name || ''),
         'النوع': pay.type === 'IN' ? 'إيداع / تحصيل' : 'صرف / دفع',
         'المبلغ (ج.م)': pay.amount || 0,
-        'ملاحظات': pay.notes || '',
+        'ملاحظات': pay.isExpense ? pay.description : (pay.notes || ''),
       }));
     } else if (modalType === 'customers') {
       rows = modalData.map((c: any) => ({
@@ -401,7 +403,7 @@ export default function ReportsPage() {
               </div>
               
               <div style={reportRow}>
-                <span>رصيد نقدية أول المدة (١/١/{year})</span>
+                <span>رصيد نقدية أول المدة ({startLabel})</span>
                 <span style={{ fontWeight: 'bold' }}>{fmt(totals?.openingCashBalance || 0)}</span>
               </div>
 
@@ -414,7 +416,10 @@ export default function ReportsPage() {
               </div>
               
               <div 
-                onClick={() => openDrillDown("المدفوعات (مصاريف وموردين)", [...allExpenses, ...balanceSheetDetails?.cash?.filter((p:any) => p.type === 'OUT' && new Date(p.date) >= new Date(startDate) && new Date(p.date) < new Date(endDate))], "cash")}
+                onClick={() => openDrillDown("المدفوعات (مصاريف وموردين)", [
+                  ...allExpenses.map(e => ({ ...e, type: 'OUT', isExpense: true })), 
+                  ...(balanceSheetDetails?.cash?.filter((p:any) => p.type === 'OUT' && new Date(p.date) >= new Date(startDate) && new Date(p.date) < new Date(endDate)) || [])
+                ], "cash")}
                 style={reportRowClickable}
               >
                 <span>(-) إجمالي المدفوعات (موردين ومصاريف)</span>
@@ -438,7 +443,7 @@ export default function ReportsPage() {
                 <button onClick={exportInventorySummary} className="btn" style={exportBtnStyle}>📥 تصدير Excel</button>
               </div>
               <div style={reportRow}>
-                <span>رصيد أول المدة (١/١/{year})</span>
+                <span>رصيد أول المدة ({startLabel})</span>
                 <span>{fmt(totals?.totalOpeningValue || 0)}</span>
               </div>
               <div onClick={() => openDrillDown("تفاصيل المشتريات", allInvoices.filter(i => i.type === 'PURCHASES'), "invoices")} style={reportRowClickable}>
@@ -633,18 +638,18 @@ export default function ReportsPage() {
                     {modalData.map((pay, idx) => (
                       <tr key={idx}>
                         <td>{new Date(pay.date).toLocaleDateString("ar-EG")}</td>
-                        <td>{pay.person?.name || '---'}</td>
+                        <td>{pay.isExpense ? `مصروف: ${pay.category}` : (pay.person?.name || '---')}</td>
                         <td style={{ color: pay.type === 'IN' ? 'var(--success-color)' : 'var(--danger-color)' }}>
                           {pay.type === 'IN' ? 'إيداع / تحصيل' : 'صرف / دفع'}
                         </td>
                         <td style={{ fontWeight: 'bold' }}>{fmt(pay.amount)}</td>
-                        <td style={{ fontSize: '0.8rem', opacity: 0.7 }}>{pay.notes}</td>
+                        <td style={{ fontSize: '0.8rem', opacity: 0.7 }}>{pay.isExpense ? pay.description : pay.notes}</td>
                       </tr>
                     ))}
                     {/* Explicit Opening Balance Row at the bottom (Starting point) */}
                     {totals?.openingCashBalance! > 0 && (
                       <tr style={{ background: 'rgba(16, 185, 129, 0.05)', borderTop: '2px solid rgba(255,255,255,0.1)' }}>
-                        <td>٠١/٠١/٢٠٢٦</td>
+                        <td>{startLabel}</td>
                         <td style={{ fontWeight: 'bold' }}>رصيد أول المدة</td>
                         <td style={{ color: 'var(--success-color)' }}>رصيد افتتاحي (نقدية)</td>
                         <td style={{ fontWeight: 'bold' }}>{fmt(totals?.openingCashBalance!)}</td>

@@ -146,6 +146,34 @@ export async function GET(request: Request) {
     const accCashOut = allPayBefore.find(p => p.type === 'OUT')?._sum?.amount || 0;
     const cashOnHand = accCashIn - accCashOut - (allExpBefore._sum.amount || 0);
 
+    // Period specific Opening Balances
+    const [allExpBeforeStart, allPayBeforeStart] = await Promise.all([
+      prisma.expense.aggregate({ where: { date: { lt: startDate } }, _sum: { amount: true } }),
+      prisma.payment.groupBy({ by: ['type'], where: { date: { lt: startDate }, isDeleted: false }, _sum: { amount: true } })
+    ]);
+    const cashInBeforeStart = allPayBeforeStart.find(p => p.type === 'IN')?._sum?.amount || 0;
+    const cashOutBeforeStart = allPayBeforeStart.find(p => p.type === 'OUT')?._sum?.amount || 0;
+    const openingCashBalanceForPeriod = 10278 + cashInBeforeStart - cashOutBeforeStart - (allExpBeforeStart._sum.amount || 0);
+
+    const [salesStart, salesRetStart, purStart, purRetStart] = await Promise.all([
+      prisma.invoiceItem.groupBy({ by: ['productId'], where: { invoice: { type: 'SALES', date: { lt: startDate }, isDeleted: false } }, _sum: { quantity: true } }),
+      prisma.invoiceItem.groupBy({ by: ['productId'], where: { invoice: { type: 'SALES_RETURN', date: { lt: startDate }, isDeleted: false } }, _sum: { quantity: true } }),
+      prisma.invoiceItem.groupBy({ by: ['productId'], where: { invoice: { type: 'PURCHASES', date: { lt: startDate }, isDeleted: false } }, _sum: { quantity: true } }),
+      prisma.invoiceItem.groupBy({ by: ['productId'], where: { invoice: { type: 'PURCHASES_RETURN', date: { lt: startDate }, isDeleted: false } }, _sum: { quantity: true } })
+    ]);
+
+    let totalOpeningValueForPeriod = 0;
+    products.forEach(p => {
+      const factor = p.conversionFactor || 1;
+      const openingPieces = p.openingQty * factor;
+      const purchased = (purStart.find(x => x.productId === p.id)?._sum?.quantity || 0) - (purRetStart.find(x => x.productId === p.id)?._sum?.quantity || 0);
+      const sold = (salesStart.find(x => x.productId === p.id)?._sum?.quantity || 0) - (salesRetStart.find(x => x.productId === p.id)?._sum?.quantity || 0);
+      const curQtyAtStart = openingPieces + purchased - sold;
+      if (curQtyAtStart > 0) {
+        totalOpeningValueForPeriod += curQtyAtStart * (productWAC.get(p.id) || 0);
+      }
+    });
+
     // Dynamic Inventory Value at EndDate
     const [salesHistoryAgg, salesRetHistoryAgg] = await Promise.all([
       prisma.invoiceItem.groupBy({
@@ -273,8 +301,8 @@ export async function GET(request: Request) {
         purchasesCount: (purAgg._count || 0) + (purRetAgg._count || 0),
         totalDeliveryRevenue,
         totalDiscount,
-        totalOpeningValue,
-        openingCashBalance 
+        totalOpeningValue: totalOpeningValueForPeriod,
+        openingCashBalance: openingCashBalanceForPeriod 
       },
       balanceSheet,
       balanceSheetDetails: {
