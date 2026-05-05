@@ -9,6 +9,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
     { path: '/', label: '🏠 لوحة التحكم والملخص' },
     { path: '/invoices', label: '🧾 سجل الفواتير' },
     { path: '/payments', label: '💰 التحصيلات والسندات' },
+    { path: '/transfers', label: '🔄 التحويلات الداخلية' },
     { path: '/inventory', label: '📦 المستودع والجرد' },
     { path: '/sales', label: '💚 فاتورة مبيعات جديدة' },
     { path: '/quotations', label: '📝 عرض سعر جديد' },

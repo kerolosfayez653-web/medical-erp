@@ -58,6 +58,16 @@ export default async function Home() {
     cashAccounts[m] -= e._sum.amount || 0;
   });
 
+  const allTransfers = await prisma.transfer.findMany();
+  allTransfers.forEach(t => {
+    const from = t.fromMethod || 'كاش';
+    const to = t.toMethod || 'كاش';
+    if (cashAccounts[from] === undefined) cashAccounts[from] = 0;
+    if (cashAccounts[to] === undefined) cashAccounts[to] = 0;
+    cashAccounts[from] -= t.amount;
+    cashAccounts[to] += t.amount;
+  });
+
   const totalAvailableCash = Object.values(cashAccounts).reduce((s, a) => s + a, 0);
   
   // Refined Inventory/COGS logic
@@ -143,6 +153,7 @@ export default async function Home() {
         
         <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
           <a href="/sales" className="btn btn-primary" style={{ flex: '1 1 200px' }}>فاتورة مبيعات جديدة</a>
+          <a href="/transfers" className="btn btn-primary" style={{ flex: '1 1 200px', background: 'linear-gradient(135deg, #0284c7, #38bdf8)' }}>🔄 تحويل بين الحسابات</a>
           <a href="/quotations" className="btn btn-primary" style={{ flex: '1 1 200px', background: 'linear-gradient(135deg, #059669, #10b981)' }}>إنشاء عرض سعر جديد</a>
           <a href="/purchases" className="btn btn-secondary" style={{ flex: '1 1 200px' }}>إدخال مشتريات للمخزن</a>
           <a href="/inventory" className="btn" style={{ flex: '1 1 200px', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)' }}>
