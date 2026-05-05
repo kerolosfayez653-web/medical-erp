@@ -238,25 +238,65 @@ export async function GET(request: Request) {
 
     const getAgg = (arr: any[], id: string) => Number(arr.find(a => a.personId === Number(id))?._sum?.netAmount) || 0;
 
-    const customerDetails = persons.filter(p => p.type === 'CUSTOMER').map(p => {
-      const sales = getAgg(personSalesAgg, String(p.id)) - getAgg(personSalesRetAgg, String(p.id));
-      const paid = getPersonPaid(String(p.id), 'IN') - getPersonPaid(String(p.id), 'OUT'); // Out meaning refunds
-      const bal = p.initialBalance + sales - paid;
-      return { name: p.name, phone: p.phone, address: p.address, initial: p.initialBalance, sales, paid, balance: bal };
-    }).filter(p => Math.abs(p.balance) > 0.1);
+    let receivables = 0;
+    let payables = 0;
+    const customerDetails: any[] = [];
+    const supplierDetails: any[] = [];
 
-    const supplierDetails = persons.filter(p => p.type === 'SUPPLIER').map(p => {
-      const purchases = getAgg(personPurAgg, String(p.id)) - getAgg(personPurRetAgg, String(p.id));
-      const paid = getPersonPaid(String(p.id), 'OUT') - getPersonPaid(String(p.id), 'IN');
-      const bal = p.initialBalance + purchases - paid;
-      return { name: p.name, phone: p.phone, address: p.address, initial: p.initialBalance, purchases, paid, balance: bal };
-    }).filter(p => Math.abs(p.balance) > 0.1);
+    persons.forEach(p => {
+      const sales = getAgg(personSalesAgg, String(p.id));
+      const salesRet = getAgg(personSalesRetAgg, String(p.id));
+      const purchases = getAgg(personPurAgg, String(p.id));
+      const purRet = getAgg(personPurRetAgg, String(p.id));
+      const paidIn = getPersonPaid(String(p.id), 'IN');
+      const paidOut = getPersonPaid(String(p.id), 'OUT');
 
-    const receivables = initialCustomerDebt + ((allSalesBefore._sum.netAmount || 0) - (allSalesRetBefore._sum.netAmount || 0)) - 
-      persons.filter(p => p.type === 'CUSTOMER').reduce((s, p) => s + (getPersonPaid(String(p.id), 'IN') - getPersonPaid(String(p.id), 'OUT')), 0);
-      
-    const payables = initialSupplierCredit + ((allPurBefore._sum.netAmount || 0) - (allPurRetBefore._sum.netAmount || 0)) - 
-      persons.filter(p => p.type === 'SUPPLIER').reduce((s, p) => s + (getPersonPaid(String(p.id), 'OUT') - getPersonPaid(String(p.id), 'IN')), 0);
+      let debit = 0;
+      let credit = 0;
+
+      // 1. Initial Balance
+      if (p.type === 'CUSTOMER') {
+        if (p.initialBalance > 0) debit += p.initialBalance;
+        else credit += Math.abs(p.initialBalance);
+      } else {
+        if (p.initialBalance > 0) credit += p.initialBalance;
+        else debit += Math.abs(p.initialBalance);
+      }
+
+      // 2. Invoices
+      debit += sales;
+      credit += salesRet;
+      credit += purchases;
+      debit += purRet;
+
+      // 3. Payments
+      credit += paidIn;
+      debit += paidOut;
+
+      const netBalance = debit - credit;
+
+      if (Math.abs(netBalance) > 0.1) {
+        const detailsObj = {
+          name: p.name,
+          phone: p.phone,
+          address: p.address,
+          initial: p.initialBalance,
+          sales: sales - salesRet,
+          purchases: purchases - purRet,
+          paidIn,
+          paidOut,
+          balance: Math.abs(netBalance)
+        };
+
+        if (netBalance > 0) {
+          receivables += netBalance;
+          customerDetails.push(detailsObj);
+        } else {
+          payables += Math.abs(netBalance);
+          supplierDetails.push(detailsObj);
+        }
+      }
+    });
 
     const openingCashBalance = 10278;
 

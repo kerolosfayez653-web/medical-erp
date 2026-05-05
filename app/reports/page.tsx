@@ -204,25 +204,17 @@ export default function ReportsPage() {
         'المبلغ (ج.م)': pay.amount || 0,
         'ملاحظات': pay.isExpense ? pay.description : (pay.notes || ''),
       }));
-    } else if (modalType === 'customers') {
+    } else if (modalType === 'customers' || modalType === 'suppliers') {
       rows = modalData.map((c: any) => ({
-        'اسم العميل': c.name || '',
+        'الاسم': c.name || '',
         'التليفون': c.phone || '',
         'العنوان': c.address || '',
         'الرصيد الافتتاحي': c.initial || 0,
-        'إجمالي المبيعات': c.sales || 0,
-        'إجمالي التحصيل': c.paid || 0,
-        'الرصيد الحالي': c.balance || 0,
-      }));
-    } else if (modalType === 'suppliers') {
-      rows = modalData.map((s: any) => ({
-        'اسم المورد': s.name || '',
-        'التليفون': s.phone || '',
-        'العنوان': s.address || '',
-        'الرصيد الافتتاحي': s.initial || 0,
-        'إجمالي المشتريات': s.purchases || 0,
-        'إجمالي المدفوعات': s.paid || 0,
-        'الرصيد الحالي': s.balance || 0,
+        'إجمالي المبيعات له': c.sales || 0,
+        'إجمالي المشتريات منه': c.purchases || 0,
+        'مقبوضات منه (له)': c.paidIn || 0,
+        'مدفوعات إليه (عليه)': c.paidOut || 0,
+        'صافي الرصيد': c.balance || 0,
       }));
     } else if (modalType === 'inventory') {
       rows = modalData.map((p: any) => ({
@@ -661,17 +653,19 @@ export default function ReportsPage() {
               </div>
               )}
 
-              {modalType === "customers" && (
+              {(modalType === "customers" || modalType === "suppliers") && (
                 <div className="table-responsive">
                   <table style={detailTable}>
                   <thead>
                     <tr>
-                      <th>اسم العميل</th>
+                      <th>الاسم</th>
                       <th>العنوان</th>
                       <th>الرصيد الافتتاحي</th>
-                      <th>إجمالي المبيعات (+)</th>
-                      <th>إجمالي التحصيل (-)</th>
-                      <th>الرصيد الحالي (=)</th>
+                      <th>المبيعات له</th>
+                      <th>المشتريات منه</th>
+                      <th>مقبوضات (منه)</th>
+                      <th>مدفوعات (إليه)</th>
+                      <th>صافي الرصيد</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -684,45 +678,15 @@ export default function ReportsPage() {
                         <td style={{ fontSize: '0.75rem' }}>{c.address || '-'}</td>
                         <td>{fmt(c.initial)}</td>
                         <td style={{ color: 'var(--success-color)' }}>{fmt(c.sales)}</td>
-                        <td style={{ color: 'var(--danger-color)' }}>{fmt(c.paid)}</td>
+                        <td style={{ color: 'var(--danger-color)' }}>{fmt(c.purchases)}</td>
+                        <td style={{ color: 'var(--success-color)' }}>{fmt(c.paidIn)}</td>
+                        <td style={{ color: 'var(--danger-color)' }}>{fmt(c.paidOut)}</td>
                         <td style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.03)' }}>{fmt(c.balance)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-              )}
-
-              {modalType === "suppliers" && (
-                <div className="table-responsive">
-                  <table style={detailTable}>
-                    <thead>
-                      <tr>
-                        <th>اسم المورد</th>
-                        <th>العنوان</th>
-                        <th>الرصيد الافتتاحي</th>
-                        <th>إجمالي المشتريات (+)</th>
-                        <th>إجمالي المدفوعات (-)</th>
-                        <th>الرصيد الحالي (=)</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {modalData.map((s, idx) => (
-                        <tr key={idx}>
-                          <td style={{ fontWeight: 'bold' }}>
-                            <div>{s.name}</div>
-                            {s.phone && <div style={{ fontSize: '0.7rem', opacity: 0.7 }}>📞 {s.phone}</div>}
-                          </td>
-                          <td style={{ fontSize: '0.75rem' }}>{s.address || '-'}</td>
-                          <td>{fmt(s.initial)}</td>
-                          <td style={{ color: 'var(--success-color)' }}>{fmt(s.purchases)}</td>
-                          <td style={{ color: 'var(--danger-color)' }}>{fmt(s.paid)}</td>
-                          <td style={{ fontWeight: 'bold', background: 'rgba(255,255,255,0.03)' }}>{fmt(s.balance)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
               )}
 
               {modalType === "profit_summary" && (
