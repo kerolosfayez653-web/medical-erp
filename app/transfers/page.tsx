@@ -14,6 +14,7 @@ interface Transfer {
 
 export default function TransfersPage() {
   const [transfers, setTransfers] = useState<Transfer[]>([]);
+  const [balances, setBalances] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   
   const [amount, setAmount] = useState("");
@@ -24,11 +25,17 @@ export default function TransfersPage() {
 
   const methods = ['كاش', 'انستاباي', 'فودافون كاش', 'اكسيس باي', 'شيك', 'تحويل بنكي'];
 
-  const fetchTransfers = async () => {
+  const fetchData = async () => {
     try {
-      const r = await fetch('/api/transfers');
-      const data = await r.json();
-      setTransfers(data);
+      const [rTransfers, rBalances] = await Promise.all([
+        fetch('/api/transfers'),
+        fetch('/api/cash-balances')
+      ]);
+      const dataTransfers = await rTransfers.json();
+      const dataBalances = await rBalances.json();
+      
+      setTransfers(dataTransfers);
+      if (dataBalances.success) setBalances(dataBalances.cashAccounts);
     } catch (e) {
       console.error(e);
     } finally {
@@ -37,7 +44,7 @@ export default function TransfersPage() {
   };
 
   useEffect(() => {
-    fetchTransfers();
+    fetchData();
   }, []);
 
   const handleCreate = async (e: React.FormEvent) => {
@@ -55,7 +62,7 @@ export default function TransfersPage() {
       if (data.success) {
         setAmount("");
         setNotes("");
-        fetchTransfers();
+        fetchData();
       } else {
         alert(data.error);
       }
@@ -71,7 +78,7 @@ export default function TransfersPage() {
       const r = await fetch(`/api/transfers?id=${id}`, { method: 'DELETE' });
       const data = await r.json();
       if (data.success) {
-        fetchTransfers();
+        fetchData();
       } else {
         alert(data.error);
       }
@@ -119,6 +126,19 @@ export default function TransfersPage() {
           <Link href="/" className="btn btn-secondary">العودة للرئيسية</Link>
         </div>
       </div>
+
+      {Object.keys(balances).length > 0 && (
+        <div style={{ display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+          {Object.entries(balances).sort((a,b) => b[1]-a[1]).map(([m, amt]) => (
+            <div key={m} className="glass-panel" style={{ flex: '0 0 auto', padding: '1rem 1.5rem', minWidth: '150px', borderTop: `4px solid ${amt < 0 ? 'var(--danger-color)' : 'var(--success-color)'}` }}>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>{m}</div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 'bold', color: amt < 0 ? 'var(--danger-color)' : 'var(--text-primary)' }}>
+                {amt.toLocaleString('en-US')} ج.م
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'flex-start' }}>
         
