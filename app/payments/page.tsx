@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import * as XLSX from "xlsx";
 
 interface Payment {
   id: number;
@@ -260,6 +261,25 @@ export default function PaymentsPage() {
     payments: payments.filter(p => p.type === 'OUT').reduce((s, p) => s + p.amount, 0)
   };
 
+  const exportPayments = () => {
+    const rows = filtered.map(p => ({
+      'رقم السند': `PAY-${p.id}`,
+      'التاريخ': new Date(p.date).toLocaleDateString('ar-EG'),
+      'النوع': p.type === 'IN' ? 'سند قبض / تحصيل' : 'سند صرف / دفع',
+      'العميل / المورد': p.person.name,
+      'المبلغ': p.amount,
+      'وسيلة الدفع': p.method || 'كاش',
+      'رقم الفاتورة': p.invoice?.invoiceNumber || '-',
+      'الملاحظات': p.notes || ''
+    }));
+
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!views'] = [{ RTL: true }];
+    XLSX.utils.book_append_sheet(wb, ws, 'السندات والتحصيلات');
+    XLSX.writeFile(wb, `السندات_${new Date().toLocaleDateString('ar-EG').replace(/\//g, '-')}.xlsx`);
+  };
+
   if (loading) return (
     <div style={{ padding: '5rem', textAlign: 'center', background: 'var(--bg-color)', minHeight: '100vh', color: 'var(--text-secondary)' }}>
       <div className="loader" style={{ marginBottom: '1rem' }}></div>
@@ -272,8 +292,13 @@ export default function PaymentsPage() {
       
       {/* Header & Stats */}
       <div className="glass-panel" style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1.5rem', borderRight: '5px solid var(--accent-color)' }}>
-        <div style={{ minWidth: '250px' }}>
-          <h1 className="gradient-text" style={{ margin: 0, fontSize: '1.8rem' }}>💰 التدفقات النقدية</h1>
+        <div style={{ minWidth: '250px', flex: 1 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <h1 className="gradient-text" style={{ margin: 0, fontSize: '1.8rem' }}>💰 التدفقات النقدية</h1>
+            <button onClick={exportPayments} className="btn" style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10b981', border: '1px solid #10b981', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem', padding: '6px 12px' }}>
+              <span>📥</span> تصدير السندات
+            </button>
+          </div>
           <p style={{ color: 'var(--text-secondary)', margin: '5px 0 0 0', fontSize: '0.9rem' }}>إدارة شاملة للمقبوضات والمدفوعات</p>
         </div>
         <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap' }}>

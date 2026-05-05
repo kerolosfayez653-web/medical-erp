@@ -1,5 +1,6 @@
 import prisma from '../lib/prisma';
 import ThemeSwitcher from './ThemeSwitcher';
+import CashDashboardCard from '../components/CashDashboardCard';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
@@ -21,6 +22,43 @@ export default async function Home() {
   const allPeople = await prisma.person.findMany({ select: { currentBalance: true } });
   const positiveDebts = allPeople.filter(p => p.currentBalance > 0).reduce((s, p) => s + p.currentBalance, 0);
   const negativeDebts = allPeople.filter(p => p.currentBalance < 0).reduce((s, p) => s + Math.abs(p.currentBalance), 0);
+  
+  // Available Cash calculation
+  const OPENING_CASH = 10278;
+  const cashAccounts: Record<string, number> = {
+    'كاش': OPENING_CASH,
+    'انستاباي': 0,
+    'فودافون كاش': 0,
+    'اكسيس باي': 0,
+    'شيك': 0,
+    'تحويل بنكي': 0
+  };
+
+  const allPay = await prisma.payment.groupBy({
+    by: ['method', 'type'],
+    where: { isDeleted: false },
+    _sum: { amount: true }
+  });
+  
+  allPay.forEach(p => {
+    const m = p.method || 'كاش';
+    if (cashAccounts[m] === undefined) cashAccounts[m] = 0;
+    if (p.type === 'IN') cashAccounts[m] += p._sum.amount || 0;
+    else cashAccounts[m] -= p._sum.amount || 0;
+  });
+
+  const allExp = await prisma.expense.groupBy({
+    by: ['paymentMethod'],
+    _sum: { amount: true }
+  });
+  
+  allExp.forEach(e => {
+    const m = e.paymentMethod || 'كاش';
+    if (cashAccounts[m] === undefined) cashAccounts[m] = 0;
+    cashAccounts[m] -= e._sum.amount || 0;
+  });
+
+  const totalAvailableCash = Object.values(cashAccounts).reduce((s, a) => s + a, 0);
   
   // Refined Inventory/COGS logic
   const products = await prisma.product.findMany({ include: { invoiceItems: { include: { invoice: true } } } });
@@ -78,6 +116,8 @@ export default async function Home() {
       </div>
       
       <div className="stats-grid" style={{ marginTop: '1rem' }}>
+        <CashDashboardCard cashAccounts={cashAccounts} totalAvailableCash={totalAvailableCash} />
+        
         <a href="/reports" className="stat-card clickable-card" style={{ borderTop: '6px solid #8b5cf6', background: 'rgba(139, 92, 246, 0.08)', textDecoration: 'none' }}>
           <span className="stat-title" style={{ fontWeight: 'bold' }}>مجمل الربح (Gross Profit) 📈</span>
           <span className="stat-value" style={{ color: '#8b5cf6' }}>{grossProfit.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ج.م</span>
