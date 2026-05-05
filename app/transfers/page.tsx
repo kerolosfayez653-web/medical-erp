@@ -120,10 +120,10 @@ export default function TransfersPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1.5rem', alignItems: 'start' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'flex-start' }}>
         
         {/* Form Column */}
-        <div className="glass-panel" style={{ position: 'sticky', top: '2rem' }}>
+        <div className="glass-panel" style={{ flex: '1 1 300px', position: 'sticky', top: '2rem' }}>
           <h3 style={{ marginTop: 0, borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>➕ تحويل جديد</h3>
           <form onSubmit={handleCreate} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             
@@ -164,7 +164,7 @@ export default function TransfersPage() {
         </div>
 
         {/* Table Column */}
-        <div className="glass-panel" style={{ padding: 0, overflow: 'hidden' }}>
+        <div className="glass-panel" style={{ flex: '2 1 500px', padding: 0, overflow: 'hidden' }}>
           <div className="table-responsive">
             <table className="table" style={{ margin: 0 }}>
               <thead style={{ background: 'var(--bg-secondary)' }}>
