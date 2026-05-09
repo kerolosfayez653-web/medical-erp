@@ -30,6 +30,48 @@ export default function PeoplePage() {
   const [balanceFilter, setBalanceFilter] = useState('ALL');
   const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [bulkSending, setBulkSending] = useState(false);
+
+  const defaultMessage = `السلام عليكم 🌟
+
+يسعدنا تواصلنا معاكم من *24MED* للمستلزمات الطبية.
+
+عندنا أحدث المنتجات والعروض الجديدة اللي ممكن تفيدكم.
+تواصلوا معانا لأي استفسار أو لطلب جديد.
+
+في خدمتكم دائماً ✨`;
+
+  const formatPhone = (phone: string): string => {
+    let cleaned = phone.replace(/[^\d+]/g, '');
+    if (cleaned.startsWith('01')) cleaned = '2' + cleaned;
+    if (cleaned.startsWith('201')) cleaned = '+' + cleaned;
+    if (!cleaned.startsWith('+')) cleaned = '+' + cleaned;
+    return cleaned;
+  };
+
+  const sendWhatsApp = (phone: string, name: string) => {
+    const formatted = formatPhone(phone);
+    const msg = encodeURIComponent(`أهلاً ${name} 👋\n\n${defaultMessage}`);
+    window.open(`https://wa.me/${formatted.replace('+', '')}?text=${msg}`, '_blank');
+  };
+
+  const sendBulkReminder = () => {
+    const withPhone = filtered.filter(p => p.phone && p.phone.trim() !== '');
+    if (withPhone.length === 0) return alert('لا يوجد عملاء بأرقام هاتف في القائمة الحالية');
+    if (!confirm(`سيتم فتح ${withPhone.length} محادثة واتساب لإرسال تذكير. متأكد؟`)) return;
+    
+    setBulkSending(true);
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i >= withPhone.length) {
+        clearInterval(interval);
+        setBulkSending(false);
+        return;
+      }
+      sendWhatsApp(withPhone[i].phone!, withPhone[i].name);
+      i++;
+    }, 1500);
+  };
 
   const fetchPeople = async () => {
     try {
@@ -86,9 +128,19 @@ export default function PeoplePage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1 style={{ marginBottom: 0 }}>دليل العملاء والموردين</h1>
-        <ExportBtn type="people" label="📊 تصدير إكسيل" />
+        <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
+          <button 
+            onClick={sendBulkReminder}
+            disabled={bulkSending}
+            className="btn" 
+            style={{ background: 'rgba(37, 211, 102, 0.1)', color: '#25d366', border: '1px solid #25d366', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.85rem' }}
+          >
+            {bulkSending ? '✉️ جاري الإرسال...' : '📢 تذكير العملاء واتساب'}
+          </button>
+          <ExportBtn type="people" label="📊 تصدير إكسيل" />
+        </div>
       </div>
       
       <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
@@ -232,7 +284,7 @@ export default function PeoplePage() {
                         <td style={{ padding: '16px 12px', fontWeight: 'bold', fontSize: '1rem', color: getBalanceColor(p.currentBalance), whiteSpace: 'nowrap' }}>
                           {p.currentBalance.toLocaleString()} ج.م
                         </td>
-                        <td style={{ padding: '16px 12px', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <td style={{ padding: '16px 12px', display: 'flex', gap: '0.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
                           <button
                             onClick={() => setEditingPerson(p)}
                             className="btn"
@@ -240,6 +292,16 @@ export default function PeoplePage() {
                           >
                             ✏️ تعديل
                           </button>
+                          {p.phone && (
+                            <button
+                              onClick={() => sendWhatsApp(p.phone!, p.name)}
+                              className="btn"
+                              style={{ color: '#25d366', background: 'rgba(37, 211, 102, 0.08)', border: '1px solid rgba(37, 211, 102, 0.3)', padding: '6px 12px', fontSize: '0.8rem' }}
+                              title="إرسال تذكير واتساب"
+                            >
+                              📩 واتساب
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))
