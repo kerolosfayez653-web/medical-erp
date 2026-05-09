@@ -8,6 +8,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
   const menuItems = [
     { path: '/', label: '🏠 لوحة التحكم والملخص' },
     { path: '/invoices', label: '🧾 سجل الفواتير' },
+    { path: '/account-statement', label: '📋 كشف حساب مفصل' },
     { path: '/payments', label: '💰 التحصيلات والسندات' },
     { path: '/transfers', label: '🔄 التحويلات الداخلية' },
     { path: '/inventory', label: '📦 المستودع والجرد' },
