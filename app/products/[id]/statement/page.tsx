@@ -110,6 +110,8 @@ export default function ProductStatementPage({ params }: { params: Promise<{ id:
               <button onClick={() => setFilterType("ALL")} className={`btn ${filterType === "ALL" ? "btn-primary" : ""}`} style={{ padding: "6px 14px" }}>الكل</button>
               <button onClick={() => setFilterType("SALES")} className={`btn ${filterType === "SALES" ? "btn-primary" : ""}`} style={{ padding: "6px 14px" }}>مبيعات</button>
               <button onClick={() => setFilterType("PURCHASES")} className={`btn ${filterType === "PURCHASES" ? "btn-primary" : ""}`} style={{ padding: "6px 14px" }}>مشتريات</button>
+              <button onClick={() => setFilterType("SALES_RETURN")} className={`btn ${filterType === "SALES_RETURN" ? "btn-primary" : ""}`} style={{ padding: "6px 14px" }}>مرتجع مبيعات</button>
+              <button onClick={() => setFilterType("PURCHASES_RETURN")} className={`btn ${filterType === "PURCHASES_RETURN" ? "btn-primary" : ""}`} style={{ padding: "6px 14px" }}>مرتجع مشتريات</button>
             </div>
           </div>
 
@@ -123,10 +125,16 @@ export default function ProductStatementPage({ params }: { params: Promise<{ id:
                 <th style={th}>الكمية</th>
                 <th style={th}>السعر</th>
                 <th style={th}>الإجمالي</th>
+                <th style={{ ...th, background: "rgba(59,130,246,0.25)", color: "var(--accent-color)" }}>الرصيد بعد الحركة</th>
               </tr>
             </thead>
             <tbody>
-              {filtered.map((t, idx) => (
+              {filtered.map((t, idx) => {
+                const typeLabel = t.invoiceType === "SALES" ? "مبيعات" : t.invoiceType === "PURCHASES" ? "مشتريات" : t.invoiceType === "SALES_RETURN" ? "مرتجع مبيعات" : t.invoiceType === "PURCHASES_RETURN" ? "مرتجع مشتريات" : t.invoiceType;
+                const isIn = t.invoiceType === "PURCHASES" || t.invoiceType === "SALES_RETURN";
+                const typeBg = isIn ? "rgba(245,158,11,0.1)" : "rgba(16,185,129,0.1)";
+                const typeColor = isIn ? "#f59e0b" : "var(--success-color)";
+                return (
                 <tr key={idx} style={{ borderBottom: "1px solid rgba(255,255,255,0.04)", textAlign: "center" }}>
                   <td style={td}>{new Date(t.date).toLocaleDateString("ar-EG")}</td>
                   <td style={td}>
@@ -137,10 +145,10 @@ export default function ProductStatementPage({ params }: { params: Promise<{ id:
                   <td style={td}>
                     <span style={{
                       padding: "3px 8px", borderRadius: "6px", fontSize: "0.75rem",
-                      background: t.invoiceType === "SALES" ? "rgba(16,185,129,0.1)" : "rgba(245,158,11,0.1)",
-                      color: t.invoiceType === "SALES" ? "var(--success-color)" : "#f59e0b"
+                      background: typeBg,
+                      color: typeColor
                     }}>
-                      {t.invoiceType === "SALES" ? "مبيعات" : "مشتريات"}
+                      {typeLabel}
                     </span>
                   </td>
                   <td style={{ ...td, textAlign: "right", fontWeight: "bold" }}>
@@ -148,13 +156,34 @@ export default function ProductStatementPage({ params }: { params: Promise<{ id:
                       {t.personName}
                     </a>
                   </td>
-                  <td style={td}>
-                    {t.unitType === "SECONDARY" ? t.quantity : (t.quantity / (product.conversionFactor || 1))} {t.unitType === "SECONDARY" ? (product.secondaryUnit || "وحدة") : (product.unit || "وحدة")}
+                  <td style={{ ...td, color: isIn ? "var(--success-color)" : "var(--danger-color)" }}>
+                    {isIn ? "+" : "-"}{t.unitType === "SECONDARY" ? t.quantity : (t.quantity / (product.conversionFactor || 1))} {t.unitType === "SECONDARY" ? (product.secondaryUnit || "وحدة") : (product.unit || "وحدة")}
                   </td>
                   <td style={td}>{fmt(t.price)}</td>
                   <td style={{ ...td, fontWeight: "bold" }}>{fmt(t.total)} ج.م</td>
+                  <td style={{ ...td, fontWeight: "bold", fontSize: "0.95rem", background: "rgba(59,130,246,0.08)", color: t.balanceAfter < 0 ? "var(--danger-color)" : "var(--accent-color)" }}>
+                    {t.balanceAfter} <small style={{ fontWeight: "normal", fontSize: "0.7rem" }}>{product.secondaryUnit || "وحدة"}</small>
+                  </td>
                 </tr>
-              ))}
+                );
+              })}
+              {/* Opening balance row at the bottom (since data is newest-first) */}
+              <tr style={{ borderBottom: "2px solid var(--border-color)", textAlign: "center", background: "rgba(245,158,11,0.08)" }}>
+                <td style={{ ...td, fontWeight: "bold" }}>01/01/2026</td>
+                <td style={td}>---</td>
+                <td style={td}>
+                  <span style={{ padding: "3px 8px", borderRadius: "6px", fontSize: "0.75rem", background: "rgba(99,102,241,0.15)", color: "#818cf8" }}>
+                    رصيد أول المدة
+                  </span>
+                </td>
+                <td style={{ ...td, textAlign: "right", fontWeight: "bold" }}>---</td>
+                <td style={{ ...td, color: "var(--accent-color)" }}>{product.openingQty} {product.secondaryUnit || "وحدة"}</td>
+                <td style={td}>-</td>
+                <td style={td}>-</td>
+                <td style={{ ...td, fontWeight: "bold", fontSize: "0.95rem", background: "rgba(59,130,246,0.08)", color: "var(--accent-color)" }}>
+                  {product.openingQty} <small style={{ fontWeight: "normal", fontSize: "0.7rem" }}>{product.secondaryUnit || "وحدة"}</small>
+                </td>
+              </tr>
             </tbody>
             <tfoot>
               <tr style={{ background: "rgba(59,130,246,0.2)", fontWeight: "bold", textAlign: "center" }}>
@@ -162,6 +191,9 @@ export default function ProductStatementPage({ params }: { params: Promise<{ id:
                 <td style={td}>{filtered.reduce((s, t) => s + t.quantity, 0)} {product.secondaryUnit || "وحدة"}</td>
                 <td style={td}>-</td>
                 <td style={{ ...td, fontWeight: "bold" }}>{fmt(filtered.reduce((s, t) => s + t.total, 0))} ج.م</td>
+                <td style={{ ...td, fontWeight: "bold", background: "rgba(59,130,246,0.15)", color: "var(--accent-color)", fontSize: "1rem" }}>
+                  {filtered.length > 0 ? filtered[0].balanceAfter : product.openingQty} <small>{product.secondaryUnit || "وحدة"}</small>
+                </td>
               </tr>
             </tfoot>
           </table>

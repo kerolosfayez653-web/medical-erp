@@ -10,7 +10,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
   try {
     const product = await prisma.product.findUnique({
       where: { id: productId },
-      select: { id: true, name: true, barcode: true, category: true, unit: true, secondaryUnit: true, conversionFactor: true }
+      select: { id: true, name: true, barcode: true, category: true, unit: true, secondaryUnit: true, conversionFactor: true, openingQty: true }
     });
 
     if (!product) {
@@ -19,7 +19,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
 
     // Get all invoice items for this product, with invoice + person details
     const invoiceItems = await prisma.invoiceItem.findMany({
-      where: { productId },
+      where: { productId, invoice: { isDeleted: false } },
       include: {
         invoice: {
           include: {
@@ -27,23 +27,39 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
           }
         }
       },
-      orderBy: { invoice: { date: 'desc' } }
+      orderBy: { invoice: { date: 'asc' } }
     });
 
-    // Build transaction list
-    const transactions = invoiceItems.map(item => ({
-      date: item.invoice.date,
-      invoiceId: item.invoice.id,
-      invoiceNumber: item.invoice.invoiceNumber,
-      invoiceType: item.invoice.type,
-      personId: item.invoice.person?.id,
-      personName: item.invoice.person?.name || 'غير محدد',
-      personType: item.invoice.person?.type,
-      quantity: item.quantity,
-      unitType: item.unitType,
-      price: item.price,
-      total: item.total,
-    }));
+    // Build transaction list with running balance
+    let runningBalance = product.openingQty;
+    const transactionsAsc = invoiceItems.map(item => {
+      const type = item.invoice.type;
+      let qtyChange = 0;
+      if (type === 'PURCHASES' || type === 'SALES_RETURN') {
+        qtyChange = item.quantity; // stock increases
+      } else if (type === 'SALES' || type === 'PURCHASES_RETURN') {
+        qtyChange = -item.quantity; // stock decreases
+      }
+      runningBalance += qtyChange;
+
+      return {
+        date: item.invoice.date,
+        invoiceId: item.invoice.id,
+        invoiceNumber: item.invoice.invoiceNumber,
+        invoiceType: type,
+        personId: item.invoice.person?.id,
+        personName: item.invoice.person?.name || 'غير محدد',
+        personType: item.invoice.person?.type,
+        quantity: item.quantity,
+        unitType: item.unitType,
+        price: item.price,
+        total: item.total,
+        balanceAfter: runningBalance,
+      };
+    });
+
+    // Reverse to show newest first, but balance is calculated correctly
+    const transactions = [...transactionsAsc].reverse();
 
     // Build customer summary (aggregated by person)
     const customerMap: Record<number, { name: string; type: string; totalQty: number; totalAmount: number; invoiceCount: number; lastDate: string }> = {};
