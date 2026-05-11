@@ -15,6 +15,10 @@ interface Totals {
   purchasesCount: number;
   totalDeliveryRevenue: number;
   totalDiscount: number;
+  collectedVAT: number;
+  deductedWHTFromSales: number;
+  paidVAT: number;
+  deductedWHTFromPurchases: number;
   totalOpeningValue: number;
   openingCashBalance: number;
 }
@@ -385,8 +389,36 @@ export default function ReportsPage() {
             </div>
           </div>
 
-          {/* Statement 2: Cash Flow & Assets */}
+          {/* Statement 2: Cash Flow & Assets & Taxes */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+
+            <div className="glass-panel" style={{ padding: '2rem', borderLeft: '5px solid #8b5cf6' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #8b5cf6', paddingBottom: '0.8rem', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h2 style={{ margin: 0 }}>🏛️ الضرائب المجمعة</h2>
+              </div>
+              
+              <div style={{ ...reportRow, color: 'var(--success-color)' }}>
+                <span>ضريبة قيمة مضافة مُحصلة (مبيعات +14%)</span>
+                <span style={{ fontWeight: 'bold' }}>{fmt(totals?.collectedVAT || 0)}</span>
+              </div>
+              <div style={{ ...reportRow, color: 'var(--danger-color)' }}>
+                <span>ضريبة خصم مخصومة منا (مبيعات -1%)</span>
+                <span>{fmt(totals?.deductedWHTFromSales || 0)}</span>
+              </div>
+              <hr style={{ border: 'none', borderTop: '1px dashed var(--border-color)', margin: '1rem 0' }} />
+              <div style={{ ...reportRow, color: 'var(--danger-color)' }}>
+                <span>ضريبة قيمة مضافة مدفوعة (مشتريات +14%)</span>
+                <span>{fmt(totals?.paidVAT || 0)}</span>
+              </div>
+              <div style={{ ...reportRow, color: 'var(--success-color)' }}>
+                <span>ضريبة خصم مخصومة للغير (مشتريات -1%)</span>
+                <span style={{ fontWeight: 'bold' }}>{fmt(totals?.deductedWHTFromPurchases || 0)}</span>
+              </div>
+              <div style={{ marginTop: '1rem', fontSize: '0.8rem', opacity: 0.6 }}>
+                * هذه المبالغ لا تؤثر على مجمل الربح لأنها التزامات وأصول ضريبية وليست إيرادات.
+              </div>
+            </div>
+
             
             <div className="glass-panel" style={{ padding: '2rem', borderLeft: '5px solid var(--success-color)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--success-color)', paddingBottom: '0.8rem', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>

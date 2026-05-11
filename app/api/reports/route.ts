@@ -37,22 +37,22 @@ export async function GET(request: Request) {
     const [salesAgg, purAgg, salesRetAgg, purRetAgg, expAgg, payAgg] = await Promise.all([
       prisma.invoice.aggregate({
         where: { type: 'SALES', date: { gte: startDate, lt: endDate }, isDeleted: false },
-        _sum: { totalAmount: true, deliveryFee: true, discount: true },
+        _sum: { totalAmount: true, deliveryFee: true, discount: true, vatAmount: true, withholdingTax: true },
         _count: true
       }),
       prisma.invoice.aggregate({
         where: { type: 'PURCHASES', date: { gte: startDate, lt: endDate }, isDeleted: false },
-        _sum: { totalAmount: true, deliveryFee: true, discount: true },
+        _sum: { totalAmount: true, deliveryFee: true, discount: true, vatAmount: true, withholdingTax: true },
         _count: true
       }),
       prisma.invoice.aggregate({
         where: { type: 'SALES_RETURN', date: { gte: startDate, lt: endDate }, isDeleted: false },
-        _sum: { totalAmount: true, deliveryFee: true, discount: true },
+        _sum: { totalAmount: true, deliveryFee: true, discount: true, vatAmount: true, withholdingTax: true },
         _count: true
       }),
       prisma.invoice.aggregate({
         where: { type: 'PURCHASES_RETURN', date: { gte: startDate, lt: endDate }, isDeleted: false },
-        _sum: { totalAmount: true, deliveryFee: true, discount: true },
+        _sum: { totalAmount: true, deliveryFee: true, discount: true, vatAmount: true, withholdingTax: true },
         _count: true
       }),
       prisma.expense.aggregate({
@@ -71,6 +71,11 @@ export async function GET(request: Request) {
     const totalExpenses = expAgg._sum.amount || 0;
     const totalDeliveryRevenue = salesAgg._sum.deliveryFee || 0;
     const totalDiscount = (salesAgg._sum.discount || 0) - (salesRetAgg._sum.discount || 0);
+
+    const collectedVAT = (salesAgg._sum?.vatAmount || 0) - (salesRetAgg._sum?.vatAmount || 0);
+    const deductedWHTFromSales = (salesAgg._sum?.withholdingTax || 0) - (salesRetAgg._sum?.withholdingTax || 0);
+    const paidVAT = (purAgg._sum?.vatAmount || 0) - (purRetAgg._sum?.vatAmount || 0);
+    const deductedWHTFromPurchases = (purAgg._sum?.withholdingTax || 0) - (purRetAgg._sum?.withholdingTax || 0);
 
     // 2. OPTIMIZED WAC CALCULATION (Database Level)
     const products = await prisma.product.findMany({
@@ -342,6 +347,10 @@ export async function GET(request: Request) {
         purchasesCount: (purAgg._count || 0) + (purRetAgg._count || 0),
         totalDeliveryRevenue,
         totalDiscount,
+        collectedVAT,
+        deductedWHTFromSales,
+        paidVAT,
+        deductedWHTFromPurchases,
         totalOpeningValue: totalOpeningValueForPeriod,
         openingCashBalance: openingCashBalanceForPeriod 
       },
