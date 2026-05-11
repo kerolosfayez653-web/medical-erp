@@ -9,8 +9,9 @@ export async function GET() {
     const products = await prisma.product.findMany({
       include: {
         invoiceItems: {
+          where: { invoice: { isDeleted: false } },
           include: {
-            invoice: { select: { type: true, date: true } }
+            invoice: { select: { type: true, date: true, isDeleted: true } }
           }
         }
       },

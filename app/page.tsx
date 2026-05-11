@@ -5,8 +5,8 @@ import CashDashboardCard from '../components/CashDashboardCard';
 export const dynamic = 'force-dynamic';
 
 export default async function Home() {
-  const salesAgg = await prisma.invoice.aggregate({ _sum: { netAmount: true }, where: { type: 'SALES' } });
-  const purAgg = await prisma.invoice.aggregate({ _sum: { netAmount: true }, where: { type: 'PURCHASES' } });
+  const salesAgg = await prisma.invoice.aggregate({ _sum: { netAmount: true }, where: { type: 'SALES', isDeleted: false } });
+  const purAgg = await prisma.invoice.aggregate({ _sum: { netAmount: true }, where: { type: 'PURCHASES', isDeleted: false } });
   
   // Safe fetch for expenses
   let totalExpenses = 0;
@@ -28,7 +28,14 @@ export default async function Home() {
   const totalAvailableCash = Object.values(cashAccounts).reduce((s, a) => s + a, 0);
   
   // Refined Inventory/COGS logic
-  const products = await prisma.product.findMany({ include: { invoiceItems: { include: { invoice: true } } } });
+  const products = await prisma.product.findMany({ 
+    include: { 
+      invoiceItems: { 
+        where: { invoice: { isDeleted: false } },
+        include: { invoice: true } 
+      } 
+    } 
+  });
   let totalInventoryValue = 0;
   let totalCOGS = 0;
 
