@@ -29,7 +29,7 @@ async function generatePurchaseInvoiceNumber(dateToUse: Date, invoiceType: strin
   const dd = String(dateToUse.getDate()).padStart(2, '0');
   const prefix = invoiceType === 'SALES' ? 'INV-S' : 'INV-P';
 
-  return `${prefix}-${yy}${mm}${dd}${yearlyCount + 1}-${String(dailyCount + 1).padStart(4, '0')}`;
+  return `${prefix}-${yy}${mm}${dd}${yearlyCount + 1}-${dailyCount + 1}`;
 }
 
 export async function POST(request: Request) {

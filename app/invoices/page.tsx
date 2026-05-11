@@ -381,24 +381,32 @@ export default function InvoicesHistoryPage() {
                  
                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                     <div className="input-group">
-                        <label>رقم الفاتورة (تعديل آخر 4 أرقام فقط)</label>
+                        <label>رقم الفاتورة (تعديل تسلسل اليوم فقط)</label>
                         <div style={{ display: "flex", alignItems: "stretch", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border-color)", borderRadius: "8px", direction: "ltr", overflow: "hidden" }}>
-                           <div style={{ padding: "10px", background: "rgba(255,255,255,0.05)", borderRight: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
-                              {editingInvoice.invoiceNumber?.substring(0, Math.max(0, (editingInvoice.invoiceNumber?.length || 0) - 4))}
-                           </div>
-                           <input 
-                              type="text" 
-                              maxLength={4}
-                              placeholder="0000"
-                              className="input-field" 
-                              style={{ flex: 1, background: "transparent", border: "none", textAlign: "center", fontWeight: "bold", color: "var(--accent-color)", fontSize: "1rem" }} 
-                              value={editingInvoice.invoiceNumber?.substring(Math.max(0, (editingInvoice.invoiceNumber?.length || 0) - 4)) || ""} 
-                              onChange={e => {
-                                 const oldVal = editingInvoice.invoiceNumber || "";
-                                 const prefix = oldVal.substring(0, Math.max(0, oldVal.length - 4));
-                                 setEditingInvoice({...editingInvoice, invoiceNumber: prefix + e.target.value.slice(0, 4)});
-                              }} 
-                           />
+                           {(() => {
+                              const invStr = editingInvoice.invoiceNumber || "";
+                              const lastDashIdx = invStr.lastIndexOf('-');
+                              const prefix = lastDashIdx !== -1 ? invStr.substring(0, lastDashIdx + 1) : "";
+                              const suffix = lastDashIdx !== -1 ? invStr.substring(lastDashIdx + 1) : invStr;
+                              
+                              return (
+                                 <>
+                                 <div style={{ padding: "10px", background: "rgba(255,255,255,0.05)", borderRight: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+                                    {prefix}
+                                 </div>
+                                 <input 
+                                    type="text" 
+                                    placeholder="1"
+                                    className="input-field" 
+                                    style={{ flex: 1, background: "transparent", border: "none", textAlign: "center", fontWeight: "bold", color: "var(--accent-color)", fontSize: "1.1rem" }} 
+                                    value={suffix} 
+                                    onChange={e => {
+                                       setEditingInvoice({...editingInvoice, invoiceNumber: prefix + e.target.value});
+                                    }} 
+                                 />
+                                 </>
+                              );
+                           })()}
                         </div>
                      </div>
 
