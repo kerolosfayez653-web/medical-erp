@@ -18,11 +18,11 @@ export async function GET() {
     });
 
     const salesInvoicesAgg = await prisma.invoice.aggregate({
-      where: { type: 'SALES' },
-      _sum: { netAmount: true }
+      where: { type: 'SALES', isDeleted: false },
+      _sum: { totalAmount: true, deliveryFee: true, discount: true }
     });
-    
-    const totalInvoicesSales = salesInvoicesAgg._sum.netAmount || 0;
+
+    const totalInvoicesSales = (salesInvoicesAgg._sum.totalAmount || 0) + (salesInvoicesAgg._sum.deliveryFee || 0) - (salesInvoicesAgg._sum.discount || 0);
 
     const data = products.map((p) => {
       const allPurchases = p.invoiceItems.filter(i => i.invoice.type === 'PURCHASES');

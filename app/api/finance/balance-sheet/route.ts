@@ -90,8 +90,7 @@ export async function GET() {
     }).filter(s => Math.abs(s.balance) > 0.1);
     const currentPayables = supplierTransactions.reduce((s, c) => s + c.balance, 0);
 
-    // Equity: Profit & Drawings
-    const totalSales = allInvoices.filter(i => i.type === 'SALES').reduce((s, i) => s + i.netAmount, 0) - allInvoices.filter(i => i.type === 'SALES_RETURN').reduce((s, i) => s + i.netAmount, 0);
+    const totalSales = allInvoices.filter(i => i.type === 'SALES').reduce((s, i) => s + ((i.totalAmount || 0) + (i.deliveryFee || 0) - (i.discount || 0)), 0) - allInvoices.filter(i => i.type === 'SALES_RETURN').reduce((s, i) => s + ((i.totalAmount || 0) + (i.deliveryFee || 0) - (i.discount || 0)), 0);
     
     let totalCOGS = 0;
     allInvoices.filter(i => i.type === 'SALES' || i.type === 'SALES_RETURN').forEach(inv => {

@@ -37,22 +37,22 @@ export async function GET(request: Request) {
     const [salesAgg, purAgg, salesRetAgg, purRetAgg, expAgg, payAgg] = await Promise.all([
       prisma.invoice.aggregate({
         where: { type: 'SALES', date: { gte: startDate, lt: endDate }, isDeleted: false },
-        _sum: { netAmount: true, deliveryFee: true, discount: true },
+        _sum: { totalAmount: true, deliveryFee: true, discount: true },
         _count: true
       }),
       prisma.invoice.aggregate({
         where: { type: 'PURCHASES', date: { gte: startDate, lt: endDate }, isDeleted: false },
-        _sum: { netAmount: true },
+        _sum: { totalAmount: true, deliveryFee: true, discount: true },
         _count: true
       }),
       prisma.invoice.aggregate({
         where: { type: 'SALES_RETURN', date: { gte: startDate, lt: endDate }, isDeleted: false },
-        _sum: { netAmount: true, discount: true },
+        _sum: { totalAmount: true, deliveryFee: true, discount: true },
         _count: true
       }),
       prisma.invoice.aggregate({
         where: { type: 'PURCHASES_RETURN', date: { gte: startDate, lt: endDate }, isDeleted: false },
-        _sum: { netAmount: true },
+        _sum: { totalAmount: true, deliveryFee: true, discount: true },
         _count: true
       }),
       prisma.expense.aggregate({
@@ -65,8 +65,9 @@ export async function GET(request: Request) {
       })
     ]);
 
-    const totalSales = (salesAgg._sum.netAmount || 0) - (salesRetAgg._sum.netAmount || 0);
-    const totalPurchases = (purAgg._sum.netAmount || 0) - (purRetAgg._sum.netAmount || 0);
+    const calcRevenue = (agg: any) => (agg._sum?.totalAmount || 0) + (agg._sum?.deliveryFee || 0) - (agg._sum?.discount || 0);
+    const totalSales = calcRevenue(salesAgg) - calcRevenue(salesRetAgg);
+    const totalPurchases = calcRevenue(purAgg) - calcRevenue(purRetAgg);
     const totalExpenses = expAgg._sum.amount || 0;
     const totalDeliveryRevenue = salesAgg._sum.deliveryFee || 0;
     const totalDiscount = (salesAgg._sum.discount || 0) - (salesRetAgg._sum.discount || 0);
