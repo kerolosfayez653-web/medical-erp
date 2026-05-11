@@ -225,6 +225,18 @@ export default function PrintInvoicePage() {
               <span>+ {fmt(invoice.deliveryFee)}</span>
             </div>
           )}
+          {invoice.vatAmount > 0 && (
+            <div className="total-row" style={{ color: '#dc2626' }}>
+              <span>قيمة مضافة (14%):</span>
+              <span>+ {fmt(invoice.vatAmount)}</span>
+            </div>
+          )}
+          {invoice.withholdingTax > 0 && (
+            <div className="total-row" style={{ color: '#059669' }}>
+              <span>ضريبة خصم (1%):</span>
+              <span>- {fmt(invoice.withholdingTax)}</span>
+            </div>
+          )}
           <div className="total-row total-final">
             <span>الصافي المطلوب:</span>
             <span>{fmt(invoice.netAmount)} ج.م</span>

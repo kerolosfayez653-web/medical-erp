@@ -30,7 +30,7 @@ async function generatePurchaseInvoiceNumber(dateToUse: Date, invoiceType: strin
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { personId, items, paidAmount, discount = 0, deliveryFee = 0, paymentMethod, invoiceDate } = body;
+    const { personId, items, paidAmount, discount = 0, deliveryFee = 0, paymentMethod, invoiceDate, applyVat, applyWht } = body;
     const dateToUse = invoiceDate ? new Date(invoiceDate + 'T00:00:00') : new Date();
 
     let itemsTotal = 0;
@@ -38,7 +38,10 @@ export async function POST(request: Request) {
       itemsTotal += item.price * item.quantity;
     }
 
-    const total = itemsTotal + parseFloat(deliveryFee) - parseFloat(discount);
+    const vatAmount = applyVat ? itemsTotal * 0.14 : 0;
+    const withholdingTax = applyWht ? itemsTotal * 0.01 : 0;
+
+    const total = itemsTotal + parseFloat(deliveryFee) - parseFloat(discount) + vatAmount - withholdingTax;
     const paymentStatus = paidAmount >= total ? 'CASH' : (paidAmount > 0 ? 'PARTIAL' : 'CREDIT');
     const remaining = total - paidAmount;
     const invoiceNumber = await generatePurchaseInvoiceNumber(dateToUse, 'PURCHASES');
@@ -57,6 +60,8 @@ export async function POST(request: Request) {
           paymentStatus,
           discount: parseFloat(discount) || 0,
           deliveryFee: parseFloat(deliveryFee) || 0,
+          vatAmount,
+          withholdingTax,
           items: {
             create: await Promise.all(items.map(async (i: any) => {
               const product = await tx.product.findUnique({ where: { id: parseInt(i.productId) } });

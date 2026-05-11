@@ -42,6 +42,8 @@ function SalesPageContent() {
   const [paidAmount, setPaidAmount]       = useState("0");
   const [discount, setDiscount]           = useState("0");
   const [deliveryFee, setDeliveryFee]     = useState("0");
+  const [applyVat, setApplyVat]           = useState(false);
+  const [applyWht, setApplyWht]           = useState(false);
   const [invoiceDate, setInvoiceDate]     = useState(new Date().toISOString().split('T')[0]);
   const [paymentMethod, setPaymentMethod] = useState("كاش");
   const [loading, setLoading]             = useState(false);
@@ -99,6 +101,8 @@ function SalesPageContent() {
           }
           if (data.discount) setDiscount(data.discount);
           if (data.deliveryFee) setDeliveryFee(data.deliveryFee);
+          if (data.applyVat !== undefined) setApplyVat(data.applyVat);
+          if (data.applyWht !== undefined) setApplyWht(data.applyWht);
           if (data.paidAmount) setPaidAmount(data.paidAmount);
           if (data.invoiceDate) setInvoiceDate(data.invoiceDate);
         } catch (e) { console.error("Error restoring sale draft", e); }
@@ -107,11 +111,11 @@ function SalesPageContent() {
   }, [fromQuotation]);
 
   useEffect(() => {
-    if (cart.length > 0 || selectedCustomerId || discount !== "0" || deliveryFee !== "0" || paidAmount !== "0") {
-      const data = { cart, selectedCustomerId, custSearch, discount, deliveryFee, paidAmount, invoiceDate };
+    if (cart.length > 0 || selectedCustomerId || discount !== "0" || deliveryFee !== "0" || paidAmount !== "0" || applyVat || applyWht) {
+      const data = { cart, selectedCustomerId, custSearch, discount, deliveryFee, applyVat, applyWht, paidAmount, invoiceDate };
       localStorage.setItem("draft_sale", JSON.stringify(data));
     }
-  }, [cart, selectedCustomerId, custSearch, discount, deliveryFee, paidAmount, invoiceDate]);
+  }, [cart, selectedCustomerId, custSearch, discount, deliveryFee, applyVat, applyWht, paidAmount, invoiceDate]);
 
   const selectedCustomer = customers.find(c => String(c.id) === selectedCustomerId) || null;
 
@@ -183,7 +187,9 @@ function SalesPageContent() {
   const itemsTotal     = cart.reduce((s, i) => s + i.price * i.quantity, 0);
   const discountVal    = parseFloat(discount || "0");
   const deliveryVal    = parseFloat(deliveryFee || "0");
-  const totalAmount    = itemsTotal + deliveryVal - discountVal;
+  const vatAmount      = applyVat ? itemsTotal * 0.14 : 0;
+  const whtAmount      = applyWht ? itemsTotal * 0.01 : 0;
+  const totalAmount    = itemsTotal + deliveryVal - discountVal + vatAmount - whtAmount;
   const paid           = parseFloat(paidAmount || "0");
   const remaining      = totalAmount - paid;
 
@@ -194,7 +200,7 @@ function SalesPageContent() {
     const res = await fetch("/api/sales", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ type: "SALES", personId: selectedCustomerId, items: cart, paidAmount: paid, discount: discountVal, deliveryFee: deliveryVal, paymentMethod, personPhone, personAddress, invoiceDate }),
+      body: JSON.stringify({ type: "SALES", personId: selectedCustomerId, items: cart, paidAmount: paid, discount: discountVal, deliveryFee: deliveryVal, applyVat, applyWht, paymentMethod, personPhone, personAddress, invoiceDate }),
     });
     if (res.ok) {
       const data = await res.json();
@@ -205,6 +211,8 @@ function SalesPageContent() {
       setPaidAmount("0");
       setDiscount("0");
       setDeliveryFee("0");
+      setApplyVat(false);
+      setApplyWht(false);
       setInvoiceDate(new Date().toISOString().split('T')[0]);
       setSelectedCustomerId("");
       fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
@@ -403,6 +411,30 @@ function SalesPageContent() {
                 <input type="number" step="0.01" value={discount} onChange={e => setDiscount(e.target.value)} className="input-field" style={{ padding: "6px" }} />
               </div>
             </div>
+
+            <div style={{ display: "flex", gap: "15px", marginBottom: "12px", flexWrap: "wrap", background: "rgba(255,255,255,0.03)", padding: "10px", borderRadius: "8px" }}>
+               <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "0.9rem" }}>
+                 <input type="checkbox" checked={applyVat} onChange={e => setApplyVat(e.target.checked)} style={{ width: "16px", height: "16px", accentColor: "var(--accent-color)" }} />
+                 <span>قيمة مضافة (14%+)</span>
+               </label>
+               <label style={{ display: "flex", alignItems: "center", gap: "6px", cursor: "pointer", fontSize: "0.9rem" }}>
+                 <input type="checkbox" checked={applyWht} onChange={e => setApplyWht(e.target.checked)} style={{ width: "16px", height: "16px", accentColor: "var(--accent-color)" }} />
+                 <span>ضريبة خصم (1%-)</span>
+               </label>
+            </div>
+
+            {applyVat && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.95rem" }}>
+                <span>قيمة مضافة (14%):</span>
+                <span style={{ color: "var(--danger-color)" }}>+ {fmt(vatAmount)} ج.م</span>
+              </div>
+            )}
+            {applyWht && (
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontSize: "0.95rem" }}>
+                <span>ضريبة خصم (1%):</span>
+                <span style={{ color: "var(--success-color)" }}>- {fmt(whtAmount)} ج.م</span>
+              </div>
+            )}
 
             <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "12px", fontSize: "1.2rem", fontWeight: "bold", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "8px" }}>
               <span>الصافي المطلوب:</span>

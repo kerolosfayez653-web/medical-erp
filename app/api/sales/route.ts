@@ -30,7 +30,7 @@ async function generateSalesInvoiceNumber(dateToUse: Date, invoiceType: string):
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { personId, items, paidAmount, type, discount = 0, deliveryFee = 0, paymentMethod, personPhone, personAddress, invoiceDate } = body;
+    const { personId, items, paidAmount, type, discount = 0, deliveryFee = 0, paymentMethod, personPhone, personAddress, invoiceDate, applyVat, applyWht } = body;
     const dateToUse = invoiceDate ? new Date(invoiceDate + 'T00:00:00') : new Date();
 
     // Validate and Update person contact info if provided
@@ -55,7 +55,10 @@ export async function POST(request: Request) {
       itemsTotal += Number(item.price) * Number(item.quantity);
     }
 
-    const total = itemsTotal + parseFloat(deliveryFee) - parseFloat(discount);
+    const vatAmount = applyVat ? itemsTotal * 0.14 : 0;
+    const withholdingTax = applyWht ? itemsTotal * 0.01 : 0;
+
+    const total = itemsTotal + parseFloat(deliveryFee) - parseFloat(discount) + vatAmount - withholdingTax;
     const paymentStatus = paidAmount >= total ? 'CASH' : (paidAmount > 0 ? 'PARTIAL' : 'CREDIT');
     const remaining = total - paidAmount;
     const invoiceTypeToUse = type || 'SALES';
@@ -86,6 +89,8 @@ export async function POST(request: Request) {
           paymentStatus,
           discount: parseFloat(discount) || 0,
           deliveryFee: parseFloat(deliveryFee) || 0,
+          vatAmount,
+          withholdingTax,
           cogs: totalCogs,
           items: {
             create: await Promise.all(items.map(async (i: any) => {

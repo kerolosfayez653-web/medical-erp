@@ -71,6 +71,8 @@ model Invoice {
   paymentMethod String?
   discount      Float         @default(0)
   deliveryFee   Float         @default(0)
+  vatAmount     Float         @default(0)
+  withholdingTax Float        @default(0)
   netAmount     Float         @default(0)
   cogs          Float         @default(0)
   createdAt     DateTime      @default(now())
