@@ -284,8 +284,11 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
         }
       });
       
-      // 3. DELETE INVOICE
-      await tx.invoice.delete({ where: { id: invoiceId } });
+      // 3. SOFT DELETE INVOICE
+      await tx.invoice.update({ 
+        where: { id: invoiceId }, 
+        data: { isDeleted: true, deletedAt: new Date() } 
+      });
 
       return { success: true };
     });
