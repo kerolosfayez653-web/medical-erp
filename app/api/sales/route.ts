@@ -2,17 +2,29 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 
-// Generate invoice number: INV-S-YYMMDD-NNNN
-async function generateSalesInvoiceNumber(): Promise<string> {
-  const now = new Date();
-  const yy  = String(now.getFullYear()).slice(2);
-  const mm  = String(now.getMonth() + 1).padStart(2, '0');
-  const dd  = String(now.getDate()).padStart(2, '0');
-  const prefix = `INV-S-${yy}${mm}${dd}`;
-  const count = await prisma.invoice.count({
-    where: { invoiceNumber: { startsWith: prefix } }
+// Generate invoice number: {YearlyCount}-{DailyCount}
+async function generateSalesInvoiceNumber(dateToUse: Date, invoiceType: string): Promise<string> {
+  const yearStart = new Date(dateToUse.getFullYear(), 0, 1);
+  const nextYearStart = new Date(dateToUse.getFullYear() + 1, 0, 1);
+  
+  const todayStart = new Date(dateToUse.getFullYear(), dateToUse.getMonth(), dateToUse.getDate());
+  const tomorrowStart = new Date(dateToUse.getFullYear(), dateToUse.getMonth(), dateToUse.getDate() + 1);
+
+  const yearlyCount = await prisma.invoice.count({
+    where: {
+      type: invoiceType,
+      date: { gte: yearStart, lt: nextYearStart }
+    }
   });
-  return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+
+  const dailyCount = await prisma.invoice.count({
+    where: {
+      type: invoiceType,
+      date: { gte: todayStart, lt: tomorrowStart }
+    }
+  });
+
+  return `${yearlyCount + 1}-${dailyCount + 1}`;
 }
 
 export async function POST(request: Request) {
@@ -46,7 +58,8 @@ export async function POST(request: Request) {
     const total = itemsTotal + parseFloat(deliveryFee) - parseFloat(discount);
     const paymentStatus = paidAmount >= total ? 'CASH' : (paidAmount > 0 ? 'PARTIAL' : 'CREDIT');
     const remaining = total - paidAmount;
-    const invoiceNumber = await generateSalesInvoiceNumber();
+    const invoiceTypeToUse = type || 'SALES';
+    const invoiceNumber = await generateSalesInvoiceNumber(dateToUse, invoiceTypeToUse);
 
     const result = await prisma.$transaction(async (tx) => {
       // 0. Pre-calculate COGS
@@ -63,7 +76,7 @@ export async function POST(request: Request) {
       // 1. Create Invoice with auto number
       const invoice = await tx.invoice.create({
         data: {
-          type: type || 'SALES',
+          type: invoiceTypeToUse,
           invoiceNumber,
           personId: Number(personId),
           date: dateToUse,

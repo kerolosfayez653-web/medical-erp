@@ -2,16 +2,29 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 
-async function generatePurchaseInvoiceNumber(): Promise<string> {
-  const now = new Date();
-  const yy  = String(now.getFullYear()).slice(2);
-  const mm  = String(now.getMonth() + 1).padStart(2, '0');
-  const dd  = String(now.getDate()).padStart(2, '0');
-  const prefix = `INV-P-${yy}${mm}${dd}`;
-  const count = await prisma.invoice.count({
-    where: { invoiceNumber: { startsWith: prefix } }
+// Generate invoice number: {YearlyCount}-{DailyCount}
+async function generatePurchaseInvoiceNumber(dateToUse: Date, invoiceType: string): Promise<string> {
+  const yearStart = new Date(dateToUse.getFullYear(), 0, 1);
+  const nextYearStart = new Date(dateToUse.getFullYear() + 1, 0, 1);
+  
+  const todayStart = new Date(dateToUse.getFullYear(), dateToUse.getMonth(), dateToUse.getDate());
+  const tomorrowStart = new Date(dateToUse.getFullYear(), dateToUse.getMonth(), dateToUse.getDate() + 1);
+
+  const yearlyCount = await prisma.invoice.count({
+    where: {
+      type: invoiceType,
+      date: { gte: yearStart, lt: nextYearStart }
+    }
   });
-  return `${prefix}-${String(count + 1).padStart(4, '0')}`;
+
+  const dailyCount = await prisma.invoice.count({
+    where: {
+      type: invoiceType,
+      date: { gte: todayStart, lt: tomorrowStart }
+    }
+  });
+
+  return `${yearlyCount + 1}-${dailyCount + 1}`;
 }
 
 export async function POST(request: Request) {
@@ -28,7 +41,7 @@ export async function POST(request: Request) {
     const total = itemsTotal + parseFloat(deliveryFee) - parseFloat(discount);
     const paymentStatus = paidAmount >= total ? 'CASH' : (paidAmount > 0 ? 'PARTIAL' : 'CREDIT');
     const remaining = total - paidAmount;
-    const invoiceNumber = await generatePurchaseInvoiceNumber();
+    const invoiceNumber = await generatePurchaseInvoiceNumber(dateToUse, 'PURCHASES');
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create Invoice with auto number
