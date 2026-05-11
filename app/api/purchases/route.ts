@@ -24,7 +24,12 @@ async function generatePurchaseInvoiceNumber(dateToUse: Date, invoiceType: strin
     }
   });
 
-  return `${yearlyCount + 1}-${String(dailyCount + 1).padStart(4, '0')}`;
+  const yy = String(dateToUse.getFullYear()).slice(2);
+  const mm = String(dateToUse.getMonth() + 1).padStart(2, '0');
+  const dd = String(dateToUse.getDate()).padStart(2, '0');
+  const prefix = invoiceType === 'SALES' ? 'INV-S' : 'INV-P';
+
+  return `${prefix}-${yy}${mm}${dd}${yearlyCount + 1}-${String(dailyCount + 1).padStart(4, '0')}`;
 }
 
 export async function POST(request: Request) {
