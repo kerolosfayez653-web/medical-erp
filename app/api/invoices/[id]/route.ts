@@ -31,7 +31,7 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
   
   try {
     const body = await _request.json();
-    const { items, personId, date, type, discount, deliveryFee, paidAmount, reason } = body;
+    const { items, personId, date, type, invoiceNumber, discount, deliveryFee, paidAmount, reason } = body;
 
     const oldInvoice = await prisma.invoice.findUnique({
       where: { id: invoiceId },
@@ -161,6 +161,7 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
         where: { id: invoiceId },
         data: {
           personId: targetPersonId,
+          invoiceNumber: invoiceNumber !== undefined ? invoiceNumber : oldInvoice.invoiceNumber,
           date: date ? new Date(date) : oldInvoice.date,
           type: activeType,
           totalAmount: newTotal,

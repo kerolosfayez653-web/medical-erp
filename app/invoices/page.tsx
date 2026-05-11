@@ -381,6 +381,28 @@ export default function InvoicesHistoryPage() {
                  
                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '2rem' }}>
                     <div className="input-group">
+                        <label>رقم الفاتورة (تعديل آخر 4 أرقام فقط)</label>
+                        <div style={{ display: "flex", alignItems: "stretch", background: "rgba(255,255,255,0.03)", border: "1px solid var(--border-color)", borderRadius: "8px", direction: "ltr", overflow: "hidden" }}>
+                           <div style={{ padding: "10px", background: "rgba(255,255,255,0.05)", borderRight: "1px solid rgba(255,255,255,0.1)", display: "flex", alignItems: "center", color: "var(--text-secondary)", fontSize: "0.9rem" }}>
+                              {editingInvoice.invoiceNumber?.substring(0, Math.max(0, (editingInvoice.invoiceNumber?.length || 0) - 4))}
+                           </div>
+                           <input 
+                              type="text" 
+                              maxLength={4}
+                              placeholder="0000"
+                              className="input-field" 
+                              style={{ flex: 1, background: "transparent", border: "none", textAlign: "center", fontWeight: "bold", color: "var(--accent-color)", fontSize: "1rem" }} 
+                              value={editingInvoice.invoiceNumber?.substring(Math.max(0, (editingInvoice.invoiceNumber?.length || 0) - 4)) || ""} 
+                              onChange={e => {
+                                 const oldVal = editingInvoice.invoiceNumber || "";
+                                 const prefix = oldVal.substring(0, Math.max(0, oldVal.length - 4));
+                                 setEditingInvoice({...editingInvoice, invoiceNumber: prefix + e.target.value.slice(0, 4)});
+                              }} 
+                           />
+                        </div>
+                     </div>
+
+                    <div className="input-group">
                        <label>العميل/المورد</label>
                        <select className="input-field" value={editingInvoice.personId} onChange={e => setEditingInvoice({...editingInvoice, personId: parseInt(e.target.value)})}>
                           {people.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
@@ -557,6 +579,7 @@ export default function InvoicesHistoryPage() {
                                 deliveryFee: editingInvoice.deliveryFee, 
                                 paidAmount: editingInvoice.paidAmount, 
                                 personId: editingInvoice.personId,
+                                 invoiceNumber: editingInvoice.invoiceNumber,
                                 date: editingInvoice.date,
                                 type: editingInvoice.type,
                                 reason: editReason 

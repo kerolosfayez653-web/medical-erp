@@ -24,7 +24,7 @@ async function generateSalesInvoiceNumber(dateToUse: Date, invoiceType: string):
     }
   });
 
-  return `${yearlyCount + 1}-${dailyCount + 1}`;
+  return `${yearlyCount + 1}-${String(dailyCount + 1).padStart(4, '0')}`;
 }
 
 export async function POST(request: Request) {
