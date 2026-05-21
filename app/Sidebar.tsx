@@ -19,6 +19,7 @@ export default function Sidebar({ isOpen, onClose }: { isOpen?: boolean; onClose
     { path: '/people', label: '👥 دليل العملاء والموردين' },
     { path: '/expenses', label: '💰 المصروفات' },
     { path: '/reports', label: '📊 القوائم المالية والتقارير' },
+    { path: '/backup', label: '🔄 النسخ الاحتياطي والـ Cloud' },
     { path: '/import', label: '⬆️ استيراد البيانات' },
     { path: '/trash', label: '🗑️ سلة المهملات' },
   ];

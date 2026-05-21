@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Sidebar from "./Sidebar";
+import GlobalSearch from "../components/GlobalSearch";
 
 interface LayoutWrapperProps {
   children: React.ReactNode;
@@ -79,6 +80,7 @@ export default function LayoutWrapper({ children }: LayoutWrapperProps) {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <GlobalSearch />
             <div className="desktop-only" style={{ textAlign: "right", borderRight: "1px solid var(--border-color)", paddingRight: "15px" }}>
               <div style={{ fontSize: "0.8rem", color: "var(--text-secondary)" }}>مرحباً بك</div>
               <div style={{ fontSize: "0.95rem", fontWeight: "bold" }}>المدير العام</div>
