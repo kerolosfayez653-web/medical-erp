@@ -55,6 +55,21 @@ function SalesPageContent() {
   const [editingContact, setEditingContact] = useState(false);
   const [lastAddedId, setLastAddedId]     = useState<number | null>(null);
 
+  // Quick-add customer modal
+  const [showAddCustomer, setShowAddCustomer] = useState(false);
+  const [newCustName, setNewCustName]         = useState("");
+  const [newCustPhone, setNewCustPhone]       = useState("");
+  const [newCustAddress, setNewCustAddress]   = useState("");
+  const [addingCust, setAddingCust]           = useState(false);
+
+  // Quick-add product modal
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [newProdName, setNewProdName]       = useState("");
+  const [newProdUnit, setNewProdUnit]       = useState("قطعه");
+  const [newProdPrice, setNewProdPrice]     = useState("");
+  const [newProdBarcode, setNewProdBarcode] = useState("");
+  const [addingProd, setAddingProd]         = useState(false);
+
   const searchParams = useSearchParams();
   const fromQuotation = searchParams.get("fromQuotation");
 
@@ -223,9 +238,60 @@ function SalesPageContent() {
     setLoading(false);
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchProduct.toLowerCase())
-  );
+  const quickAddCustomer = async () => {
+    if (!newCustName.trim()) return alert("يرجى إدخال اسم العميل");
+    setAddingCust(true);
+    try {
+      const res = await fetch("/api/people", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCustName.trim(), type: "CUSTOMER", phone: newCustPhone.trim() || null, address: newCustAddress.trim() || null, initialBalance: 0 }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const r2 = await fetch("/api/people");
+        const d2 = await r2.json();
+        if (d2.success) setCustomers(d2.data);
+        setSelectedCustomerId(String(data.data.id));
+        setCustSearch(data.data.name);
+        setPersonPhone(newCustPhone.trim());
+        setPersonAddress(newCustAddress.trim());
+        setShowAddCustomer(false);
+        setNewCustName(""); setNewCustPhone(""); setNewCustAddress("");
+      } else {
+        alert("❌ " + (data.error || "خطأ في الحفظ"));
+      }
+    } catch { alert("❌ خطأ في الاتصال"); }
+    setAddingCust(false);
+  };
+
+  const quickAddProduct = async () => {
+    if (!newProdName.trim()) return alert("يرجى إدخال اسم الصنف");
+    setAddingProd(true);
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newProdName.trim(), unit: newProdUnit.trim() || "قطعه", barcode: newProdBarcode.trim() || null }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const r2 = await fetch("/api/inventory");
+        const d2 = await r2.json();
+        if (d2.success) setProducts(d2.data);
+        setShowAddProduct(false);
+        setNewProdName(""); setNewProdUnit("قطعه"); setNewProdPrice(""); setNewProdBarcode("");
+      } else {
+        alert("❌ " + (data.error || "خطأ في الحفظ"));
+      }
+    } catch { alert("❌ خطأ في الاتصال"); }
+    setAddingProd(false);
+  };
+
+  const filteredProducts = products.filter(p => {
+    const search = normalizeText(searchProduct);
+    return normalizeText(p.name).includes(search);
+  });
 
   return (
     <div>
@@ -238,7 +304,37 @@ function SalesPageContent() {
           
           {/* Customer Selector */}
           <div className="glass-panel">
-            <h3 style={{ marginBottom: "1rem" }}>👤 بيانات العميل</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0 }}>👤 بيانات العميل</h3>
+              <button onClick={() => setShowAddCustomer(!showAddCustomer)} style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: 'var(--accent-color)', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'Cairo, sans-serif', transition: '0.2s' }}>
+                {showAddCustomer ? '✕ إلغاء' : '＋ عميل جديد'}
+              </button>
+            </div>
+
+            {/* Quick-Add Customer Inline Form */}
+            {showAddCustomer && (
+              <div style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '10px', padding: '14px', marginBottom: '12px', animation: 'searchSlideIn 0.2s ease-out' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-color)', marginBottom: '10px' }}>إضافة عميل جديد</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem' }}>الاسم *</label>
+                    <input type="text" placeholder="اسم العميل..." value={newCustName} onChange={e => setNewCustName(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem' }}>📞 الهاتف</label>
+                    <input type="text" placeholder="01xxxxxxxxx" value={newCustPhone} onChange={e => setNewCustPhone(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                  </div>
+                </div>
+                <div className="input-group" style={{ marginBottom: '8px' }}>
+                  <label style={{ fontSize: '0.7rem' }}>📍 العنوان</label>
+                  <input type="text" placeholder="العنوان (اختياري)..." value={newCustAddress} onChange={e => setNewCustAddress(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                </div>
+                <button onClick={quickAddCustomer} disabled={addingCust} className="btn btn-primary" style={{ width: '100%', padding: '8px', fontSize: '0.85rem' }}>
+                  {addingCust ? '⏳ جاري الحفظ...' : '✅ حفظ واختيار العميل'}
+                </button>
+              </div>
+            )}
+
             <div className="input-group" style={{ position: 'relative' }}>
               <label>👤 ابحث عن عميل واختاره</label>
               <input 
@@ -530,12 +626,42 @@ function SalesPageContent() {
           <div className="glass-panel">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
               <h3 style={{ margin: 0 }}>📦 الأصناف المتاحة</h3>
-              <input 
-                type="text" placeholder="🔍 بحث عن صنف..." 
-                value={searchProduct} onChange={e => setSearchProduct(e.target.value)} 
-                className="input-field" style={{ width: "180px" }} 
-              />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input 
+                  type="text" placeholder="🔍 بحث عن صنف..." 
+                  value={searchProduct} onChange={e => setSearchProduct(e.target.value)} 
+                  className="input-field" style={{ width: "180px" }} 
+                />
+                <button onClick={() => setShowAddProduct(!showAddProduct)} style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: 'var(--accent-color)', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'Cairo, sans-serif', whiteSpace: 'nowrap', transition: '0.2s' }}>
+                  {showAddProduct ? '✕ إلغاء' : '＋ صنف جديد'}
+                </button>
+              </div>
             </div>
+
+            {/* Quick-Add Product Inline Form */}
+            {showAddProduct && (
+              <div style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '10px', padding: '14px', marginBottom: '12px', animation: 'searchSlideIn 0.2s ease-out' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-color)', marginBottom: '10px' }}>إضافة صنف جديد</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem' }}>اسم الصنف *</label>
+                    <input type="text" placeholder="اسم الصنف..." value={newProdName} onChange={e => setNewProdName(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem' }}>الوحدة</label>
+                    <input type="text" placeholder="قطعه" value={newProdUnit} onChange={e => setNewProdUnit(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem' }}>الباركود</label>
+                    <input type="text" placeholder="اختياري" value={newProdBarcode} onChange={e => setNewProdBarcode(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                  </div>
+                </div>
+                <button onClick={quickAddProduct} disabled={addingProd} className="btn btn-primary" style={{ width: '100%', padding: '8px', fontSize: '0.85rem' }}>
+                  {addingProd ? '⏳ جاري الحفظ...' : '✅ حفظ الصنف'}
+                </button>
+              </div>
+            )}
+
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: "12px", maxHeight: "450px", overflowY: "auto" }}>
               {filteredProducts.map(p => {
                 const inCart = cart.find(i => Number(i.productId) === Number(p.id));
