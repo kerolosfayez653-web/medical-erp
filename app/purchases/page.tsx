@@ -47,6 +47,21 @@ export default function PurchasesPage() {
   const [suppSearch, setSuppSearch]       = useState("");
   const [lastAddedId, setLastAddedId]     = useState<number | null>(null);
 
+  // Quick-add supplier modal
+  const [showAddSupplier, setShowAddSupplier] = useState(false);
+  const [newSuppName, setNewSuppName]         = useState("");
+  const [newSuppPhone, setNewSuppPhone]       = useState("");
+  const [newSuppAddress, setNewSuppAddress]   = useState("");
+  const [addingSupp, setAddingSupp]           = useState(false);
+
+  // Quick-add product modal
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [newProdName, setNewProdName]       = useState("");
+  const [newProdUnit, setNewProdUnit]       = useState("قطعه");
+  const [newProdBarcode, setNewProdBarcode] = useState("");
+  const [addingProd, setAddingProd]         = useState(false);
+
+
   useEffect(() => {
     fetch("/api/inventory").then(r => r.json()).then(d => { if (d.success) setProducts(d.data); });
     fetch("/api/people").then(r => r.json()).then(d => {
@@ -80,10 +95,18 @@ export default function PurchasesPage() {
   }, [cart, selectedSupplierId, suppSearch, discount, deliveryFee, applyVat, applyWht, paidAmount, invoiceDate]);
 
 
+  const normalizeText = (text: string) => 
+    text?.toLowerCase()
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .trim() || "";
+
   const selectedSupplier = suppliers.find(s => String(s.id) === selectedSupplierId) || null;
-  const filteredSuppliersList = suppliers.filter(s => 
-    s.name.includes(suppSearch) || (s.phone && s.phone.includes(suppSearch))
-  );
+  const filteredSuppliersList = suppliers.filter(s => {
+    const search = normalizeText(suppSearch);
+    return normalizeText(s.name).includes(search) || (s.phone && s.phone.includes(search));
+  });
 
   const addToCart = (product: Product) => {
     setLastAddedId(product.id);
@@ -146,9 +169,58 @@ export default function PurchasesPage() {
     setLoading(false);
   };
 
-  const filteredProducts = products.filter(p =>
-    p.name.toLowerCase().includes(searchProduct.toLowerCase())
-  );
+  const quickAddSupplier = async () => {
+    if (!newSuppName.trim()) return alert("يرجى إدخال اسم المورد");
+    setAddingSupp(true);
+    try {
+      const res = await fetch("/api/people", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newSuppName.trim(), type: "SUPPLIER", phone: newSuppPhone.trim() || null, address: newSuppAddress.trim() || null, initialBalance: 0 }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const r2 = await fetch("/api/people");
+        const d2 = await r2.json();
+        if (d2.success) setSuppliers(d2.data);
+        setSelectedSupplierId(String(data.data.id));
+        setSuppSearch(data.data.name);
+        setShowAddSupplier(false);
+        setNewSuppName(""); setNewSuppPhone(""); setNewSuppAddress("");
+      } else {
+        alert("❌ " + (data.error || "خطأ في الحفظ"));
+      }
+    } catch { alert("❌ خطأ في الاتصال"); }
+    setAddingSupp(false);
+  };
+
+  const quickAddProduct = async () => {
+    if (!newProdName.trim()) return alert("يرجى إدخال اسم الصنف");
+    setAddingProd(true);
+    try {
+      const res = await fetch("/api/products", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newProdName.trim(), unit: newProdUnit.trim() || "قطعه", barcode: newProdBarcode.trim() || null }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        const r2 = await fetch("/api/inventory");
+        const d2 = await r2.json();
+        if (d2.success) setProducts(d2.data);
+        setShowAddProduct(false);
+        setNewProdName(""); setNewProdUnit("قطعه"); setNewProdBarcode("");
+      } else {
+        alert("❌ " + (data.error || "خطأ في الحفظ"));
+      }
+    } catch { alert("❌ خطأ في الاتصال"); }
+    setAddingProd(false);
+  };
+
+  const filteredProducts = products.filter(p => {
+    const search = normalizeText(searchProduct);
+    return normalizeText(p.name).includes(search);
+  });
 
   return (
     <div>
@@ -161,7 +233,37 @@ export default function PurchasesPage() {
 
           {/* Supplier Selector */}
           <div className="glass-panel">
-            <h3 style={{ marginBottom: "1rem" }}>🏢 بيانات المورد</h3>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0 }}>🏢 بيانات المورد</h3>
+              <button onClick={() => setShowAddSupplier(!showAddSupplier)} style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: 'var(--accent-color)', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'Cairo, sans-serif', transition: '0.2s' }}>
+                {showAddSupplier ? '✕ إلغاء' : '＋ مورد جديد'}
+              </button>
+            </div>
+
+            {/* Quick-Add Supplier Inline Form */}
+            {showAddSupplier && (
+              <div style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '10px', padding: '14px', marginBottom: '12px', animation: 'searchSlideIn 0.2s ease-out' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-color)', marginBottom: '10px' }}>إضافة مورد جديد</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem' }}>الاسم *</label>
+                    <input type="text" placeholder="اسم المورد..." value={newSuppName} onChange={e => setNewSuppName(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem' }}>📞 الهاتف</label>
+                    <input type="text" placeholder="01xxxxxxxxx" value={newSuppPhone} onChange={e => setNewSuppPhone(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                  </div>
+                </div>
+                <div className="input-group" style={{ marginBottom: '8px' }}>
+                  <label style={{ fontSize: '0.7rem' }}>📍 العنوان</label>
+                  <input type="text" placeholder="العنوان (اختياري)..." value={newSuppAddress} onChange={e => setNewSuppAddress(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                </div>
+                <button onClick={quickAddSupplier} disabled={addingSupp} className="btn btn-primary" style={{ width: '100%', padding: '8px', fontSize: '0.85rem' }}>
+                  {addingSupp ? '⏳ جاري الحفظ...' : '✅ حفظ واختيار المورد'}
+                </button>
+              </div>
+            )}
+
             <div className="input-group" style={{ position: 'relative' }}>
               <label>🏢 ابحث عن مورد واختاره</label>
               <input 
@@ -430,12 +532,41 @@ export default function PurchasesPage() {
           <div className="glass-panel">
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem", flexWrap: "wrap", gap: "0.5rem" }}>
               <h3 style={{ margin: 0 }}>📦 اختيار الأصناف للشراء</h3>
-              <input
-                type="text" placeholder="🔍 ابحث في الأصناف..."
-                value={searchProduct} onChange={e => setSearchProduct(e.target.value)}
-                className="input-field" style={{ width: "220px" }}
-              />
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                <input
+                  type="text" placeholder="🔍 ابحث في الأصناف..."
+                  value={searchProduct} onChange={e => setSearchProduct(e.target.value)}
+                  className="input-field" style={{ width: "180px" }}
+                />
+                <button onClick={() => setShowAddProduct(!showAddProduct)} style={{ background: 'rgba(16,185,129,0.15)', border: '1px solid rgba(16,185,129,0.3)', color: 'var(--accent-color)', borderRadius: '8px', padding: '4px 12px', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'Cairo, sans-serif', whiteSpace: 'nowrap', transition: '0.2s' }}>
+                  {showAddProduct ? '✕ إلغاء' : '＋ صنف جديد'}
+                </button>
+              </div>
             </div>
+
+            {/* Quick-Add Product Inline Form */}
+            {showAddProduct && (
+              <div style={{ background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '10px', padding: '14px', marginBottom: '12px', animation: 'searchSlideIn 0.2s ease-out' }}>
+                <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: 'var(--accent-color)', marginBottom: '10px' }}>إضافة صنف جديد</div>
+                <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '8px', marginBottom: '8px' }}>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem' }}>اسم الصنف *</label>
+                    <input type="text" placeholder="اسم الصنف..." value={newProdName} onChange={e => setNewProdName(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem' }}>الوحدة</label>
+                    <input type="text" placeholder="قطعه" value={newProdUnit} onChange={e => setNewProdUnit(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                  </div>
+                  <div className="input-group" style={{ marginBottom: 0 }}>
+                    <label style={{ fontSize: '0.7rem' }}>الباركود</label>
+                    <input type="text" placeholder="اختياري" value={newProdBarcode} onChange={e => setNewProdBarcode(e.target.value)} className="input-field" style={{ padding: '8px', fontSize: '0.85rem' }} />
+                  </div>
+                </div>
+                <button onClick={quickAddProduct} disabled={addingProd} className="btn btn-primary" style={{ width: '100%', padding: '8px', fontSize: '0.85rem' }}>
+                  {addingProd ? '⏳ جاري الحفظ...' : '✅ حفظ الصنف'}
+                </button>
+              </div>
+            )}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: "12px", maxHeight: "500px", overflowY: "auto" }}>
               {filteredProducts.map(p => {
                 const inCart = cart.find(i => i.productId === p.id);
