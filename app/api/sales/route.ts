@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     const vatAmount = applyVat ? itemsTotal * 0.14 : 0;
     const withholdingTax = applyWht ? itemsTotal * 0.01 : 0;
 
-    const total = itemsTotal + parseFloat(deliveryFee) - parseFloat(discount) + vatAmount - withholdingTax;
+    const total = itemsTotal + (parseFloat(deliveryFee) || 0) - (parseFloat(discount) || 0) + vatAmount - withholdingTax;
     const paymentStatus = paidAmount >= total ? 'CASH' : (paidAmount > 0 ? 'PARTIAL' : 'CREDIT');
     const remaining = total - paidAmount;
     const invoiceTypeToUse = type || 'SALES';
@@ -76,7 +76,7 @@ export async function POST(request: Request) {
         const prod = await tx.product.findUnique({ where: { id: Number(item.productId) } });
         if (prod) {
           const factor = Number(prod.conversionFactor) || 1;
-          const effectiveQty = item.unitType === 'SECONDARY' ? parseFloat(item.quantity) : (parseFloat(item.quantity) * factor);
+          const effectiveQty = item.unitType === 'SECONDARY' ? (parseFloat(item.quantity) || 0) : ((parseFloat(item.quantity) || 0) * factor);
           totalCogs += effectiveQty * (prod.openingWeightedAvg || 0); 
         }
       }
@@ -101,7 +101,7 @@ export async function POST(request: Request) {
             create: await Promise.all(items.map(async (i: any) => {
               const product = await tx.product.findUnique({ where: { id: Number(i.productId) } });
               const factor = Number(product?.conversionFactor) || 1;
-              const effectiveQty = i.unitType === 'SECONDARY' ? parseFloat(i.quantity) : (parseFloat(i.quantity) * factor);
+              const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
               const price = parseFloat(i.price) || 0;
               const qty = parseFloat(i.quantity) || 0;
               return {
@@ -146,7 +146,7 @@ export async function POST(request: Request) {
         if (!product) continue;
 
         const factor = Number(product.conversionFactor) || 1;
-        const effectiveQty = i.unitType === 'SECONDARY' ? parseFloat(i.quantity) : (parseFloat(i.quantity) * factor);
+        const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
         
         let qtyNeeded = effectiveQty;
         if (qtyNeeded > 0) {

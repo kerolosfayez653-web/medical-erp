@@ -40,13 +40,13 @@ export async function POST(request: Request) {
 
     let itemsTotal = 0;
     for (const item of items) {
-      itemsTotal += item.price * item.quantity;
+      itemsTotal += Number(item.price) * Number(item.quantity);
     }
 
     const vatAmount = applyVat ? itemsTotal * 0.14 : 0;
     const withholdingTax = applyWht ? itemsTotal * 0.01 : 0;
 
-    const total = itemsTotal + parseFloat(deliveryFee) - parseFloat(discount) + vatAmount - withholdingTax;
+    const total = itemsTotal + (parseFloat(deliveryFee) || 0) - (parseFloat(discount) || 0) + vatAmount - withholdingTax;
     const paymentStatus = paidAmount >= total ? 'CASH' : (paidAmount > 0 ? 'PARTIAL' : 'CREDIT');
     const remaining = total - paidAmount;
     const invoiceNumber = await generatePurchaseInvoiceNumber(dateToUse, 'PURCHASES');
@@ -71,9 +71,9 @@ export async function POST(request: Request) {
             create: await Promise.all(items.map(async (i: any) => {
               const product = await tx.product.findUnique({ where: { id: parseInt(i.productId) } });
               const factor = product?.conversionFactor || 1;
-              const effectiveQty = i.unitType === 'SECONDARY' ? parseFloat(i.quantity) : (parseFloat(i.quantity) * factor);
-              const price = parseFloat(i.price);
-              const qty = parseFloat(i.quantity);
+              const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
+              const price = parseFloat(i.price) || 0;
+              const qty = parseFloat(i.quantity) || 0;
               return {
                 productId: parseInt(i.productId),
                 quantity: effectiveQty,
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
       for (const item of items) {
         const product = await tx.product.findUnique({ where: { id: parseInt(item.productId) } });
         const factor = product?.conversionFactor || 1;
-        const effectiveQty = item.unitType === 'SECONDARY' ? parseFloat(item.quantity) : (parseFloat(item.quantity) * factor);
+        const effectiveQty = item.unitType === 'SECONDARY' ? (parseFloat(item.quantity) || 0) : ((parseFloat(item.quantity) || 0) * factor);
 
         if (effectiveQty > 0) {
           await tx.inventoryLot.create({
@@ -125,8 +125,8 @@ export async function POST(request: Request) {
               batchNumber: item.batchNumber || `PB-${invoice.id}`,
               expiryDate: item.expiryDate ? new Date(item.expiryDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
               quantity: effectiveQty,
-              costPrice: parseFloat(item.price),
-              sellingPrice: parseFloat(item.sellingPrice) || parseFloat(item.price) * 1.25,
+              costPrice: parseFloat(item.price) || 0,
+              sellingPrice: parseFloat(item.sellingPrice) || (parseFloat(item.price) || 0) * 1.25,
             }
           });
         } else if (effectiveQty < 0) {
