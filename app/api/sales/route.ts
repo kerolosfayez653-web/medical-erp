@@ -77,169 +77,148 @@ export async function POST(request: Request) {
     });
     const productMap = new Map(products.map(p => [p.id, p]));
 
-    const result = await prisma.$transaction(async (tx) => {
-      // 0. Pre-calculate COGS using cached products
-      let totalCogs = 0;
-      for (const item of items) {
-        const prod = productMap.get(Number(item.productId));
-        if (prod) {
-          const factor = Number(prod.conversionFactor) || 1;
-          const effectiveQty = item.unitType === 'SECONDARY' ? (parseFloat(item.quantity) || 0) : ((parseFloat(item.quantity) || 0) * factor);
-          totalCogs += effectiveQty * (prod.openingWeightedAvg || 0); 
-        }
+    // 0. Pre-calculate COGS using cached products
+    let totalCogs = 0;
+    for (const item of items) {
+      const prod = productMap.get(Number(item.productId));
+      if (prod) {
+        const factor = Number(prod.conversionFactor) || 1;
+        const effectiveQty = item.unitType === 'SECONDARY' ? (parseFloat(item.quantity) || 0) : ((parseFloat(item.quantity) || 0) * factor);
+        totalCogs += effectiveQty * (prod.openingWeightedAvg || 0); 
       }
+    }
 
-      // 1. Prepare items data using cached products
-      const itemsData = items.map((i: any) => {
-        const product = productMap.get(Number(i.productId));
-        const factor = Number(product?.conversionFactor) || 1;
-        const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
-        const price = parseFloat(i.price) || 0;
-        const qty = parseFloat(i.quantity) || 0;
-        return {
-          productId: Number(i.productId),
-          quantity: effectiveQty,
-          unitType: i.unitType || 'PRIMARY',
-          price: price,
-          total: price * qty,
-          totalNet: price * qty 
-        };
-      });
-
-      // 2. Create Invoice with items
-      const invoice = await tx.invoice.create({
-        data: {
-          type: invoiceTypeToUse,
-          invoiceNumber,
-          personId: Number(personId),
-          date: dateToUse,
-          totalAmount: itemsTotal,
-          netAmount: total,
-          paidAmount: parseFloat(paidAmount) || 0,
-          paymentStatus,
-          discount: parseFloat(discount) || 0,
-          deliveryFee: parseFloat(deliveryFee) || 0,
-          vatAmount,
-          withholdingTax,
-          cogs: totalCogs,
-          items: {
-            create: itemsData
-          }
-        }
-      });
-
-      // 3. Update Person Balance
-      const txPerson = await tx.person.findUnique({ where: { id: Number(personId) } });
-      const balanceChange = txPerson?.type === 'CUSTOMER' ? remaining : -remaining;
-      await tx.person.update({
-        where: { id: Number(personId) },
-        data: { currentBalance: { increment: balanceChange } }
-      });
-
-      // 4. Add Payment Record
-      if (paidAmount > 0) {
-        await tx.payment.create({
-          data: {
-            personId: Number(personId),
-            invoiceId: invoice.id,
-            amount: parseFloat(paidAmount),
-            type: 'IN',
-            method: paymentMethod || 'كاش',
-            date: dateToUse,
-            notes: 'دفعة من فاتورة المبيعات'
-          }
-        });
-      }
-
-      // 5. Update Inventory Quantities (خصم المخزون - FIFO Batch)
-      // Fetch ALL available lots for all products in this invoice in ONE query
-      const allLots = await tx.inventoryLot.findMany({
-        where: {
-          productId: { in: productIds },
-          quantity: { gt: 0 }
-        },
-        orderBy: { expiryDate: 'asc' }
-      });
-
-      // Group lots by productId
-      const lotsByProduct = new Map<number, typeof allLots>();
-      for (const lot of allLots) {
-        if (!lotsByProduct.has(lot.productId)) {
-          lotsByProduct.set(lot.productId, []);
-        }
-        lotsByProduct.get(lot.productId)!.push(lot);
-      }
-
-      const lotUpdates: Promise<any>[] = [];
-      const deficitLots: any[] = [];
-
-      for (const i of items) {
-        const product = productMap.get(Number(i.productId));
-        if (!product) continue;
-
-        const factor = Number(product.conversionFactor) || 1;
-        const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
-
-        let qtyNeeded = effectiveQty;
-        if (qtyNeeded > 0) {
-          const productLots = lotsByProduct.get(product.id) || [];
-          for (const lot of productLots) {
-            if (qtyNeeded <= 0) break;
-            if (lot.quantity <= 0) continue;
-
-            const deduction = Math.min(lot.quantity, qtyNeeded);
-            lot.quantity -= deduction; // track remaining locally
-            lotUpdates.push(
-              tx.inventoryLot.update({
-                where: { id: lot.id },
-                data: { quantity: { decrement: deduction } }
-              })
-            );
-            qtyNeeded -= deduction;
-          }
-
-          if (qtyNeeded > 0) {
-            deficitLots.push({
-              productId: product.id,
-              batchNumber: 'DEFICIT',
-              expiryDate: new Date('2099-12-31'),
-              quantity: -qtyNeeded,
-              costPrice: 0,
-              sellingPrice: 0
-            });
-          }
-        } else if (qtyNeeded < 0) {
-          const productLots = lotsByProduct.get(product.id) || [];
-          if (productLots.length > 0) {
-            lotUpdates.push(
-              tx.inventoryLot.update({
-                where: { id: productLots[0].id },
-                data: { quantity: { increment: Math.abs(qtyNeeded) } }
-              })
-            );
-          }
-        }
-      }
-
-      // Execute all lot updates in parallel
-      if (lotUpdates.length > 0) {
-        await Promise.all(lotUpdates);
-      }
-
-      // Insert all deficit lots in ONE query
-      if (deficitLots.length > 0) {
-        await tx.inventoryLot.createMany({
-          data: deficitLots
-        });
-      }
-
-      return invoice;
-    }, {
-      maxWait: 15000,
-      timeout: 30000
+    // 1. Prepare items data using cached products
+    const itemsData = items.map((i: any) => {
+      const product = productMap.get(Number(i.productId));
+      const factor = Number(product?.conversionFactor) || 1;
+      const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
+      const price = parseFloat(i.price) || 0;
+      const qty = parseFloat(i.quantity) || 0;
+      return {
+        productId: Number(i.productId),
+        quantity: effectiveQty,
+        unitType: i.unitType || 'PRIMARY',
+        price: price,
+        total: price * qty,
+        totalNet: price * qty 
+      };
     });
 
-    return NextResponse.json({ success: true, data: result, invoiceNumber });
+    // 2. Create Invoice with items
+    const invoice = await prisma.invoice.create({
+      data: {
+        type: invoiceTypeToUse,
+        invoiceNumber,
+        personId: Number(personId),
+        date: dateToUse,
+        totalAmount: itemsTotal,
+        netAmount: total,
+        paidAmount: parseFloat(paidAmount) || 0,
+        paymentStatus,
+        discount: parseFloat(discount) || 0,
+        deliveryFee: parseFloat(deliveryFee) || 0,
+        vatAmount,
+        withholdingTax,
+        cogs: totalCogs,
+        items: {
+          create: itemsData
+        }
+      }
+    });
+
+    // 3. Update Person Balance
+    const balanceChange = person.type === 'CUSTOMER' ? remaining : -remaining;
+    await prisma.person.update({
+      where: { id: Number(personId) },
+      data: { currentBalance: { increment: balanceChange } }
+    });
+
+    // 4. Add Payment Record
+    if (paidAmount > 0) {
+      await prisma.payment.create({
+        data: {
+          personId: Number(personId),
+          invoiceId: invoice.id,
+          amount: parseFloat(paidAmount),
+          type: 'IN',
+          method: paymentMethod || 'كاش',
+          date: dateToUse,
+          notes: 'دفعة من فاتورة المبيعات'
+        }
+      });
+    }
+
+    // 5. Update Inventory Quantities (خصم المخزون - FIFO Batch)
+    const allLots = await prisma.inventoryLot.findMany({
+      where: {
+        productId: { in: productIds },
+        quantity: { gt: 0 }
+      },
+      orderBy: { expiryDate: 'asc' }
+    });
+
+    const lotsByProduct = new Map<number, typeof allLots>();
+    for (const lot of allLots) {
+      if (!lotsByProduct.has(lot.productId)) {
+        lotsByProduct.set(lot.productId, []);
+      }
+      lotsByProduct.get(lot.productId)!.push(lot);
+    }
+
+    const deficitLots: any[] = [];
+
+    for (const i of items) {
+      const product = productMap.get(Number(i.productId));
+      if (!product) continue;
+
+      const factor = Number(product.conversionFactor) || 1;
+      const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
+
+      let qtyNeeded = effectiveQty;
+      if (qtyNeeded > 0) {
+        const productLots = lotsByProduct.get(product.id) || [];
+        for (const lot of productLots) {
+          if (qtyNeeded <= 0) break;
+          if (lot.quantity <= 0) continue;
+
+          const deduction = Math.min(lot.quantity, qtyNeeded);
+          lot.quantity -= deduction;
+          await prisma.inventoryLot.update({
+            where: { id: lot.id },
+            data: { quantity: { decrement: deduction } }
+          });
+          qtyNeeded -= deduction;
+        }
+
+        if (qtyNeeded > 0) {
+          deficitLots.push({
+            productId: product.id,
+            batchNumber: 'DEFICIT',
+            expiryDate: new Date('2099-12-31'),
+            quantity: -qtyNeeded,
+            costPrice: 0,
+            sellingPrice: 0
+          });
+        }
+      } else if (qtyNeeded < 0) {
+        const productLots = lotsByProduct.get(product.id) || [];
+        if (productLots.length > 0) {
+          await prisma.inventoryLot.update({
+            where: { id: productLots[0].id },
+            data: { quantity: { increment: Math.abs(qtyNeeded) } }
+          });
+        }
+      }
+    }
+
+    if (deficitLots.length > 0) {
+      await prisma.inventoryLot.createMany({
+        data: deficitLots
+      });
+    }
+
+    return NextResponse.json({ success: true, data: invoice, invoiceNumber });
   } catch (error: any) {
     console.error('Invoice Error: ', error);
     return NextResponse.json({ success: false, error: 'Server error', details: error.message }, { status: 500 });
