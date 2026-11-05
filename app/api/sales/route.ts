@@ -70,7 +70,7 @@ export async function POST(request: Request) {
     const invoiceTypeToUse = type || 'SALES';
     const invoiceNumber = await generateSalesInvoiceNumber(dateToUse, invoiceTypeToUse);
 
-    // Pre-fetch all products in ONE query instead of fetching each one 3 times
+    // Pre-fetch all products in ONE query
     const productIds = items.map((i: any) => Number(i.productId));
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } }
@@ -89,7 +89,7 @@ export async function POST(request: Request) {
         }
       }
 
-      // 1. Prepare items data using cached products (no DB calls needed)
+      // 1. Prepare items data using cached products
       const itemsData = items.map((i: any) => {
         const product = productMap.get(Number(i.productId));
         const factor = Number(product?.conversionFactor) || 1;
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
         };
       });
 
-      // 2. Create Invoice with pre-built items
+      // 2. Create Invoice with items
       const invoice = await tx.invoice.create({
         data: {
           type: invoiceTypeToUse,
@@ -128,7 +128,7 @@ export async function POST(request: Request) {
         }
       });
 
-      // 3. Update Person Balance (الديون)
+      // 3. Update Person Balance
       const txPerson = await tx.person.findUnique({ where: { id: Number(personId) } });
       const balanceChange = txPerson?.type === 'CUSTOMER' ? remaining : -remaining;
       await tx.person.update({
@@ -136,7 +136,7 @@ export async function POST(request: Request) {
         data: { currentBalance: { increment: balanceChange } }
       });
 
-      // 4. Add Payment Record (سند القبض)
+      // 4. Add Payment Record
       if (paidAmount > 0) {
         await tx.payment.create({
           data: {
@@ -151,59 +151,93 @@ export async function POST(request: Request) {
         });
       }
 
-      // 5. Update Inventory Quantities (خصم المخزون - FIFO)
+      // 5. Update Inventory Quantities (خصم المخزون - FIFO Batch)
+      // Fetch ALL available lots for all products in this invoice in ONE query
+      const allLots = await tx.inventoryLot.findMany({
+        where: {
+          productId: { in: productIds },
+          quantity: { gt: 0 }
+        },
+        orderBy: { expiryDate: 'asc' }
+      });
+
+      // Group lots by productId
+      const lotsByProduct = new Map<number, typeof allLots>();
+      for (const lot of allLots) {
+        if (!lotsByProduct.has(lot.productId)) {
+          lotsByProduct.set(lot.productId, []);
+        }
+        lotsByProduct.get(lot.productId)!.push(lot);
+      }
+
+      const lotUpdates: Promise<any>[] = [];
+      const deficitLots: any[] = [];
+
       for (const i of items) {
         const product = productMap.get(Number(i.productId));
         if (!product) continue;
 
         const factor = Number(product.conversionFactor) || 1;
         const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
-        
+
         let qtyNeeded = effectiveQty;
         if (qtyNeeded > 0) {
-          const lots = await tx.inventoryLot.findMany({
-            where: { productId: product.id, quantity: { gt: 0 } },
-            orderBy: { expiryDate: 'asc' }
-          });
-          for (const lot of lots) {
+          const productLots = lotsByProduct.get(product.id) || [];
+          for (const lot of productLots) {
             if (qtyNeeded <= 0) break;
+            if (lot.quantity <= 0) continue;
+
             const deduction = Math.min(lot.quantity, qtyNeeded);
-            await tx.inventoryLot.update({
-              where: { id: lot.id },
-              data: { quantity: { decrement: deduction } }
-            });
+            lot.quantity -= deduction; // track remaining locally
+            lotUpdates.push(
+              tx.inventoryLot.update({
+                where: { id: lot.id },
+                data: { quantity: { decrement: deduction } }
+              })
+            );
             qtyNeeded -= deduction;
           }
-        } else if (qtyNeeded < 0) {
-          const firstLot = await tx.inventoryLot.findFirst({
-            where: { productId: product.id },
-            orderBy: { expiryDate: 'asc' }
-          });
-          if (firstLot) {
-            await tx.inventoryLot.update({
-              where: { id: firstLot.id },
-              data: { quantity: { increment: Math.abs(qtyNeeded) } }
-            });
-            qtyNeeded = 0;
-          }
-        }
 
-        if (qtyNeeded > 0) {
-           await tx.inventoryLot.create({
-             data: {
-               productId: product.id,
-               batchNumber: 'DEFICIT',
-               expiryDate: new Date('2099-12-31'),
-               quantity: -qtyNeeded,
-               costPrice: 0,
-               sellingPrice: 0
-             }
-           });
+          if (qtyNeeded > 0) {
+            deficitLots.push({
+              productId: product.id,
+              batchNumber: 'DEFICIT',
+              expiryDate: new Date('2099-12-31'),
+              quantity: -qtyNeeded,
+              costPrice: 0,
+              sellingPrice: 0
+            });
+          }
+        } else if (qtyNeeded < 0) {
+          const productLots = lotsByProduct.get(product.id) || [];
+          if (productLots.length > 0) {
+            lotUpdates.push(
+              tx.inventoryLot.update({
+                where: { id: productLots[0].id },
+                data: { quantity: { increment: Math.abs(qtyNeeded) } }
+              })
+            );
+          }
         }
       }
 
+      // Execute all lot updates in parallel
+      if (lotUpdates.length > 0) {
+        await Promise.all(lotUpdates);
+      }
+
+      // Insert all deficit lots in ONE query
+      if (deficitLots.length > 0) {
+        await tx.inventoryLot.createMany({
+          data: deficitLots
+        });
+      }
+
       return invoice;
-    }, { timeout: 30000 });
+    }, {
+      maxWait: 15000,
+      timeout: 30000
+    });
 
     return NextResponse.json({ success: true, data: result, invoiceNumber });
   } catch (error: any) {

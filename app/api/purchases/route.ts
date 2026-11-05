@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     const remaining = total - paidAmount;
     const invoiceNumber = await generatePurchaseInvoiceNumber(dateToUse, 'PURCHASES');
 
-    // Pre-fetch all products in ONE query instead of fetching each one individually
+    // Pre-fetch all products in ONE query
     const productIds = items.map((i: any) => parseInt(i.productId));
     const products = await prisma.product.findMany({
       where: { id: { in: productIds } }
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
     const productMap = new Map(products.map(p => [p.id, p]));
 
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Prepare items data using cached products (no DB calls needed)
+      // 1. Prepare items data using cached products
       const itemsData = items.map((i: any) => {
         const product = productMap.get(parseInt(i.productId));
         const factor = product?.conversionFactor || 1;
@@ -123,44 +123,75 @@ export async function POST(request: Request) {
         });
       }
 
-      // 5. Update Inventory - Add new lots
+      // 5. Update Inventory - Batch add new lots
+      const newLots: any[] = [];
+      const returnLotsToUpdate: Promise<any>[] = [];
+
       for (const item of items) {
         const product = productMap.get(parseInt(item.productId));
         const factor = product?.conversionFactor || 1;
         const effectiveQty = item.unitType === 'SECONDARY' ? (parseFloat(item.quantity) || 0) : ((parseFloat(item.quantity) || 0) * factor);
 
         if (effectiveQty > 0) {
-          await tx.inventoryLot.create({
-            data: {
-              productId: parseInt(item.productId),
-              batchNumber: item.batchNumber || `PB-${invoice.id}`,
-              expiryDate: item.expiryDate ? new Date(item.expiryDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
-              quantity: effectiveQty,
-              costPrice: parseFloat(item.price) || 0,
-              sellingPrice: parseFloat(item.sellingPrice) || (parseFloat(item.price) || 0) * 1.25,
-            }
+          newLots.push({
+            productId: parseInt(item.productId),
+            batchNumber: item.batchNumber || `PB-${invoice.id}`,
+            expiryDate: item.expiryDate ? new Date(item.expiryDate) : new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+            quantity: effectiveQty,
+            costPrice: parseFloat(item.price) || 0,
+            sellingPrice: parseFloat(item.sellingPrice) || (parseFloat(item.price) || 0) * 1.25,
           });
-        } else if (effectiveQty < 0) {
-          // Purchase return: decrease stock
+        }
+      }
+
+      // Insert all positive lots in ONE query
+      if (newLots.length > 0) {
+        await tx.inventoryLot.createMany({
+          data: newLots
+        });
+      }
+
+      // Handle purchase returns if any
+      const returnItems = items.filter((i: any) => {
+        const product = productMap.get(parseInt(i.productId));
+        const factor = product?.conversionFactor || 1;
+        const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
+        return effectiveQty < 0;
+      });
+
+      if (returnItems.length > 0) {
+        for (const item of returnItems) {
+          const product = productMap.get(parseInt(item.productId));
+          const factor = product?.conversionFactor || 1;
+          const effectiveQty = item.unitType === 'SECONDARY' ? (parseFloat(item.quantity) || 0) : ((parseFloat(item.quantity) || 0) * factor);
           let qtyToReduce = Math.abs(effectiveQty);
+          
           const lots = await tx.inventoryLot.findMany({
             where: { productId: parseInt(item.productId), quantity: { gt: 0 } },
-            orderBy: { id: 'desc' } // Reduce from most recent
+            orderBy: { id: 'desc' }
           });
           for (const lot of lots) {
             if (qtyToReduce <= 0) break;
             const reduction = Math.min(lot.quantity, qtyToReduce);
-            await tx.inventoryLot.update({
-              where: { id: lot.id },
-              data: { quantity: { decrement: reduction } }
-            });
+            returnLotsToUpdate.push(
+              tx.inventoryLot.update({
+                where: { id: lot.id },
+                data: { quantity: { decrement: reduction } }
+              })
+            );
             qtyToReduce -= reduction;
           }
+        }
+        if (returnLotsToUpdate.length > 0) {
+          await Promise.all(returnLotsToUpdate);
         }
       }
 
       return invoice;
-    }, { timeout: 30000 });
+    }, {
+      maxWait: 15000,
+      timeout: 30000
+    });
 
     return NextResponse.json({ success: true, data: result, invoiceNumber });
   } catch (error) {
