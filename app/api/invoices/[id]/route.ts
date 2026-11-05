@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -39,6 +40,17 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
     });
 
     if (!oldInvoice) return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
+
+    // Pre-fetch all needed products in ONE query
+    const allProductIds = [
+      ...oldInvoice.items.map(i => i.productId),
+      ...items.map((i: any) => parseInt(i.productId))
+    ];
+    const uniqueProductIds = [...new Set(allProductIds)];
+    const products = await prisma.product.findMany({
+      where: { id: { in: uniqueProductIds } }
+    });
+    const productMap = new Map(products.map(p => [p.id, p]));
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. REVERSE OLD EFFECTS
@@ -121,7 +133,7 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
       const activeType = type || oldInvoice.type;
       for (const item of items) {
         const productId = parseInt(item.productId);
-        const product = await tx.product.findUnique({ where: { id: productId } });
+        const product = productMap.get(productId);
         if (!product) continue;
 
         const factor = product.conversionFactor || 1;
@@ -156,7 +168,21 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
         }
       }
 
-      // 5. UPDATE INVOICE
+      // 5. Prepare items data using cached products
+      const itemsData = items.map((i: any) => {
+        const product = productMap.get(parseInt(i.productId));
+        const factor = product?.conversionFactor || 1;
+        const effectiveQty = i.unitType === 'SECONDARY' ? parseFloat(i.quantity) : (parseFloat(i.quantity) * factor);
+        return {
+          productId: parseInt(i.productId),
+          quantity: effectiveQty,
+          unitType: i.unitType || 'PRIMARY',
+          price: parseFloat(i.price) || 0,
+          total: (parseFloat(i.price) || 0) * (parseFloat(i.quantity) || 0)
+        };
+      });
+
+      // 6. UPDATE INVOICE with pre-built items
       const updatedInvoice = await tx.invoice.update({
         where: { id: invoiceId },
         data: {
@@ -171,24 +197,13 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
           discount: parseFloat(discount) || 0,
           deliveryFee: parseFloat(deliveryFee) || 0,
           items: {
-            create: await Promise.all(items.map(async (i: any) => {
-              const product = await tx.product.findUnique({ where: { id: parseInt(i.productId) } });
-              const factor = product?.conversionFactor || 1;
-              const effectiveQty = i.unitType === 'SECONDARY' ? parseFloat(i.quantity) : (parseFloat(i.quantity) * factor);
-              return {
-                productId: parseInt(i.productId),
-                quantity: effectiveQty,
-                unitType: i.unitType || 'PRIMARY',
-                price: parseFloat(i.price) || 0,
-                total: (parseFloat(i.price) || 0) * (parseFloat(i.quantity) || 0)
-              };
-            }))
+            create: itemsData
           }
         },
         include: { items: true }
       });
 
-      // 6. LOG THE CHANGE
+      // 7. LOG THE CHANGE
       await tx.invoiceLog.create({
         data: {
           invoiceId,
@@ -200,7 +215,7 @@ export async function PATCH(_request: Request, { params }: { params: Promise<{ i
       });
 
       return updatedInvoice;
-    });
+    }, { timeout: 30000 });
 
     return NextResponse.json({ success: true, data: result });
   } catch (error) {
@@ -267,17 +282,15 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
         }
       }
 
-      // 2. SOFT-DELETE RELATED RECORDS (do not hard-delete items so they can be restored)
+      // 2. SOFT-DELETE RELATED RECORDS
       await tx.payment.updateMany({ 
         where: { invoiceId },
         data: { isDeleted: true, deletedAt: new Date() }
       });
-      // Note: We leave invoiceItems alone. Since they belong to a soft-deleted invoice, 
-      // they remain untouched in the DB and are restored when the invoice is restored.
       
       await tx.invoiceLog.create({
         data: {
-          invoiceId: invoiceId, // Keep it linked to track history even in trash
+          invoiceId: invoiceId,
           action: 'DELETE',
           oldData: JSON.stringify(invoice),
           reason: `حذف (نقل للمهملات) للفاتورة رقم ${invoice.invoiceNumber || invoiceId}`
@@ -291,7 +304,7 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
       });
 
       return { success: true };
-    });
+    }, { timeout: 30000 });
 
     return NextResponse.json({ success: true });
   } catch (error) {

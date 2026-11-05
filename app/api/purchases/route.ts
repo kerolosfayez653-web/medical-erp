@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
 
+export const maxDuration = 60;
 
 // Generate invoice number: {YearlyCount}-{DailyCount}
 async function generatePurchaseInvoiceNumber(dateToUse: Date, invoiceType: string): Promise<string> {
@@ -51,8 +52,32 @@ export async function POST(request: Request) {
     const remaining = total - paidAmount;
     const invoiceNumber = await generatePurchaseInvoiceNumber(dateToUse, 'PURCHASES');
 
+    // Pre-fetch all products in ONE query instead of fetching each one individually
+    const productIds = items.map((i: any) => parseInt(i.productId));
+    const products = await prisma.product.findMany({
+      where: { id: { in: productIds } }
+    });
+    const productMap = new Map(products.map(p => [p.id, p]));
+
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Create Invoice with auto number
+      // 1. Prepare items data using cached products (no DB calls needed)
+      const itemsData = items.map((i: any) => {
+        const product = productMap.get(parseInt(i.productId));
+        const factor = product?.conversionFactor || 1;
+        const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
+        const price = parseFloat(i.price) || 0;
+        const qty = parseFloat(i.quantity) || 0;
+        return {
+          productId: parseInt(i.productId),
+          quantity: effectiveQty,
+          unitType: i.unitType || 'PRIMARY',
+          price: price,
+          total: price * qty,
+          totalNet: price * qty
+        };
+      });
+
+      // 2. Create Invoice with pre-built items
       const invoice = await tx.invoice.create({
         data: {
           type: 'PURCHASES',
@@ -68,26 +93,12 @@ export async function POST(request: Request) {
           vatAmount,
           withholdingTax,
           items: {
-            create: await Promise.all(items.map(async (i: any) => {
-              const product = await tx.product.findUnique({ where: { id: parseInt(i.productId) } });
-              const factor = product?.conversionFactor || 1;
-              const effectiveQty = i.unitType === 'SECONDARY' ? (parseFloat(i.quantity) || 0) : ((parseFloat(i.quantity) || 0) * factor);
-              const price = parseFloat(i.price) || 0;
-              const qty = parseFloat(i.quantity) || 0;
-              return {
-                productId: parseInt(i.productId),
-                quantity: effectiveQty,
-                unitType: i.unitType || 'PRIMARY',
-                price: price,
-                total: price * qty,
-                totalNet: price * qty
-              };
-            }))
+            create: itemsData
           }
         }
       });
 
-      // 2. Update Supplier Balance
+      // 3. Update Supplier Balance
       if (personId) {
         const person = await tx.person.findUnique({ where: { id: parseInt(personId) } });
         const balanceChange = person?.type === 'SUPPLIER' ? remaining : -remaining;
@@ -97,7 +108,7 @@ export async function POST(request: Request) {
         });
       }
 
-      // 3. Add Payment Record
+      // 4. Add Payment Record
       if (paidAmount > 0 && personId) {
         await tx.payment.create({
           data: {
@@ -112,9 +123,9 @@ export async function POST(request: Request) {
         });
       }
 
-      // 4. Update Inventory - Add new lots
+      // 5. Update Inventory - Add new lots
       for (const item of items) {
-        const product = await tx.product.findUnique({ where: { id: parseInt(item.productId) } });
+        const product = productMap.get(parseInt(item.productId));
         const factor = product?.conversionFactor || 1;
         const effectiveQty = item.unitType === 'SECONDARY' ? (parseFloat(item.quantity) || 0) : ((parseFloat(item.quantity) || 0) * factor);
 
@@ -149,7 +160,7 @@ export async function POST(request: Request) {
       }
 
       return invoice;
-    });
+    }, { timeout: 30000 });
 
     return NextResponse.json({ success: true, data: result, invoiceNumber });
   } catch (error) {
